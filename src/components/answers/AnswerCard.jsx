@@ -225,7 +225,6 @@ export default function AnswerCard({ answer, isOwner, isAdmin, onVerify, onRejec
             </div>
           )}
         </div>
-        </div>
 
         {answer.content && answer.content.length > 350 && (
           <div className="mt-3.5 relative z-10">
