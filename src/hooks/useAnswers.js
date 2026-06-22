@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/config/supabase'
 import { useAuth } from './useAuth'
-import { detectSpam } from '@/lib/spamDetector'
+import { spamApi } from '@/lib/spamApi'
 
 export function useAnswers() {
   const [answers, setAnswers] = useState([])
@@ -25,7 +25,6 @@ export function useAnswers() {
       const { data, error: fetchError } = await query
       if (fetchError) throw fetchError
 
-      // Filter based on user role
       const filtered = (data || []).filter(answer => {
         if (answer.verification_status === 'verified') return true
         if (isAdmin) return true
@@ -47,10 +46,14 @@ export function useAnswers() {
     if (!user) throw new Error('Must be logged in')
     setLoading(true)
     try {
-      // Run spam detection
-      const spamResult = detectSpam(content)
-      const status = spamResult.isSpam ? 'spam' : 'pending'
+      const scanResult = await spamApi.analyzeContent(content, 'answer', user.id)
 
+      if (scanResult.classification === 'CRITICAL SPAM') {
+        throw new Error('SUBMISSION_BLOCKED_CRITICAL_SPAM')
+      }
+
+      const isSpam = scanResult.classification === 'SPAM'
+      const status = isSpam ? 'spam' : 'pending'
       const { data, error: insertError } = await supabase
         .from('answers')
         .insert({
@@ -68,22 +71,37 @@ export function useAnswers() {
 
       if (insertError) throw insertError
 
-      // Notify question author
-      const { data: questionData } = await supabase
-        .from('questions')
-        .select('user_id, title')
-        .eq('id', questionId)
-        .single()
+      if (scanResult && scanResult.scanId) {
+        try {
+          await supabase.from('spam_scans').update({ content_id: data.id }).eq('id', scanResult.scanId)
+          const scans = JSON.parse(localStorage.getItem('spam_sys_scans') || '[]')
+          const scanIdx = scans.findIndex(s => s.id === scanResult.scanId)
+          if (scanIdx !== -1) {
+            scans[scanIdx].content_id = data.id
+            localStorage.setItem('spam_sys_scans', JSON.stringify(scans))
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
-      if (questionData && questionData.user_id !== user.id) {
-        await supabase.from('notifications').insert({
-          user_id: questionData.user_id,
-          message: `New answer on your question: "${questionData.title}"`,
-        })
+      if (!isSpam) {
+        const { data: questionData } = await supabase
+          .from('questions')
+          .select('user_id, title')
+          .eq('id', questionId)
+          .single()
+
+        if (questionData && questionData.user_id !== user.id) {
+          await supabase.from('notifications').insert({
+            user_id: questionData.user_id,
+            message: `New answer on your question: "${questionData.title}"`,
+          })
+        }
       }
 
       setAnswers(prev => [...prev, data])
-      return { data, isSpam: spamResult.isSpam, spamReasons: spamResult.reasons }
+      return { data, isSpam, spamReasons: scanResult.triggers }
     } catch (err) {
       setError(err.message)
       throw err
@@ -104,7 +122,6 @@ export function useAnswers() {
 
       if (updateError) throw updateError
 
-      // Notify answer author
       await supabase.from('notifications').insert({
         user_id: data.user_id,
         message: `Your answer has been verified! ${adminNote ? `Note: ${adminNote}` : ''}`,
