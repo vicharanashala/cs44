@@ -9,6 +9,10 @@ import {
   Clock,
   Paperclip,
   CheckCircle2,
+  MoreVertical,
+  Flag,
+  Volume2,
+  StopCircle,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -32,7 +36,7 @@ function formatTimeAgo(dateStr) {
   return `${Math.floor(months / 12)}y ago`;
 }
 
-export default function QuestionCard({ question, index = 0 }) {
+export default function QuestionCard({ question, index = 0, onFlag }) {
   const {
     id,
     title,
@@ -166,13 +170,55 @@ export default function QuestionCard({ question, index = 0 }) {
 
         {/* Main content */}
         <div className="flex-1 min-w-0">
-          {/* Title */}
-          <Link
-            to={`/question/${id}`}
-            className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 block"
-          >
-            {title}
-          </Link>
+          <div className="flex justify-between items-start">
+            <Link
+              to={`/question/${id}`}
+              className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 block flex-1"
+            >
+              {title}
+            </Link>
+
+            {user && author.id !== user.id && (
+              <div className="relative shrink-0 ml-2">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowMenu(!showMenu);
+                  }}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 cursor-pointer transition-colors"
+                  aria-label="Options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {showMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                      }}
+                    />
+                    <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl shadow-lg py-1 z-40">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenu(false);
+                          onFlag?.(id);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-zinc-50 dark:hover:bg-zinc-750 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                        Report Question
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Description preview */}
           {description && (

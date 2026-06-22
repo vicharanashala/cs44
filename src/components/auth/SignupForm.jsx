@@ -34,7 +34,8 @@ export default function SignupForm() {
 
   const onSubmit = async (data) => {
     try {
-      await signUp(data.email, data.password, data.name)
+      const { error } = await signUp(data.email, data.password, data.name)
+      if (error) throw error
       setSuccess(true)
       showToast('Account credentials verified!', 'success')
     } catch (err) {

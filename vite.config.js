@@ -13,4 +13,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    exclude: ['@xenova/transformers', 'onnxruntime-web'],
+  },
+  build: {
+    target: 'esnext',
+  },
 })
+
