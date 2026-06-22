@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/config/supabase'
 import { useAuth } from './useAuth'
+import { spamApi } from '@/lib/spamApi'
 
 export function useQuestions() {
   const [questions, setQuestions] = useState([])
@@ -69,7 +70,6 @@ export function useQuestions() {
     setLoading(true)
     setError(null)
     try {
-      // Increment views
       await supabase.rpc('increment_question_views', { q_id: id })
 
       const { data, error: fetchError } = await supabase
@@ -96,6 +96,25 @@ export function useQuestions() {
     if (!user) throw new Error('Must be logged in')
     setLoading(true)
     try {
+      // Analyze content for spam
+      const combinedText = `${title}\n\n${description}`
+      const scanResult = await spamApi.analyzeContent(combinedText, 'question', user.id, {
+        title,
+        description,
+        category,
+        tags,
+        attachmentUrl: attachment_url
+      })
+      console.log('SPAM SCAN RESULT FOR QUESTION:', scanResult)
+
+      if (scanResult.classification === 'CRITICAL SPAM') {
+        throw new Error('SUBMISSION_BLOCKED_CRITICAL_SPAM')
+      }
+
+      if (scanResult.classification === 'SPAM' || scanResult.classification === 'SUSPICIOUS') {
+        return { isHeldForModeration: true, scanResult }
+      }
+
       const { data, error: insertError } = await supabase
         .from('questions')
         .insert({
@@ -110,7 +129,7 @@ export function useQuestions() {
         .single()
 
       if (insertError) throw insertError
-      return data
+      return { ...data, isHeldForModeration: false, scanResult }
     } catch (err) {
       setError(err.message)
       throw err
