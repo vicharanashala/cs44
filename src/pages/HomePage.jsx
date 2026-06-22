@@ -6,6 +6,7 @@ import CategoryPills from '@/components/questions/CategoryPills'
 import Sidebar from '@/components/layout/Sidebar'
 import { useQuestions } from '@/hooks/useQuestions'
 import { useCategories } from '@/hooks/useCategories'
+import ReportModal from '@/components/ui/ReportModal'
 
 const sortOptions = [
   { value: 'newest', label: 'Newest', icon: Clock },
@@ -19,6 +20,7 @@ export default function HomePage() {
   const { categories, fetchCategories } = useCategories()
   const [activeCategory, setActiveCategory] = useState(null)
   const [activeSort, setActiveSort] = useState('newest')
+  const [reportModal, setReportModal] = useState({ open: false, type: 'question', id: null })
 
   useEffect(() => {
     fetchCategories()
@@ -30,6 +32,10 @@ export default function HomePage() {
 
   const handleCategorySelect = (category) => {
     setActiveCategory(category)
+  }
+
+  const handleFlagClick = (id) => {
+    setReportModal({ open: true, type: 'question', id })
   }
 
   return (
@@ -97,7 +103,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <QuestionFeed questions={questions} loading={loading} />
+          <QuestionFeed questions={questions} loading={loading} onFlag={handleFlagClick} />
         </div>
 
         {/* Sidebar */}
@@ -105,6 +111,16 @@ export default function HomePage() {
           <Sidebar />
         </div>
       </div>
+
+      {/* Report Modal */}
+      {reportModal.open && (
+        <ReportModal
+          isOpen={reportModal.open}
+          onClose={() => setReportModal({ open: false, type: 'question', id: null })}
+          contentType={reportModal.type}
+          contentId={reportModal.id}
+        />
+      )}
     </motion.div>
   )
 }

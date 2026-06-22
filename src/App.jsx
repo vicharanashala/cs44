@@ -15,6 +15,7 @@ import SignupPage from './pages/SignupPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminDashboard from './pages/AdminDashboard'
+import ModerationQueue from './pages/ModerationQueue'
 import NotFoundPage from './pages/NotFoundPage'
 
 function GuestRoute({ children }) {
@@ -52,6 +53,12 @@ export default function App() {
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin>
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/moderation" element={
+            <ProtectedRoute requireAdmin>
+              <ModerationQueue />
             </ProtectedRoute>
           } />
 

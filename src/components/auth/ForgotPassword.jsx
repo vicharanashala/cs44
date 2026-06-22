@@ -5,18 +5,22 @@ import { Mail, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Button from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
+import { useToast } from '@/components/ui/Toast'
 
 export default function ForgotPassword() {
   const { register, handleSubmit, formState: { errors } } = useForm()
   const { resetPassword, loading } = useAuth()
+  const { showToast } = useToast()
   const [sent, setSent] = useState(false)
 
   const onSubmit = async (data) => {
     try {
-      await resetPassword(data.email)
+      const { error } = await resetPassword(data.email)
+      if (error) throw error
       setSent(true)
+      showToast('Reset link sent!', 'success')
     } catch (err) {
-      console.error(err)
+      showToast(err.message || 'Failed to send reset link', 'error')
     }
   }
 

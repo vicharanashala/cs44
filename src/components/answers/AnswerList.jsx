@@ -5,7 +5,7 @@ import AnswerCard from './AnswerCard'
 import { AnswerSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 
-export default function AnswerList({ answers, loading, isAdmin, userId, onVerify, onReject, onDelete, onSpam }) {
+export default function AnswerList({ answers, loading, isAdmin, userId, onVerify, onReject, onDelete, onSpam, onFlag }) {
   const [sortBy, setSortBy] = useState('newest')
 
   if (loading) {
@@ -86,6 +86,7 @@ export default function AnswerList({ answers, loading, isAdmin, userId, onVerify
                 onReject={onReject}
                 onDelete={onDelete}
                 onSpam={onSpam}
+                onFlag={onFlag}
               />
             </motion.div>
           ))}

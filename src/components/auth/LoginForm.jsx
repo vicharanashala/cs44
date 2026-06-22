@@ -15,7 +15,8 @@ export default function LoginForm() {
 
   const onSubmit = async (data) => {
     try {
-      await signIn(data.email, data.password)
+      const { error } = await signIn(data.email, data.password)
+      if (error) throw error
       setSuccess(true)
       showToast('Session established!', 'success')
     } catch (err) {
