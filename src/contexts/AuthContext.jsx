@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [unlockedBadge, setUnlockedBadge] = useState(null)
   const userRef = useRef(null)
 
   const setCurrentUser = useCallback((val) => {
@@ -227,6 +228,84 @@ export function AuthProvider({ children }) {
   }, [fetchUserProfile])
 
   /**
+   * Daily login and realtime subscription for gamification system.
+   */
+  useEffect(() => {
+    if (!user) return
+
+    // Award daily login points
+    const checkDailyLogin = async () => {
+      try {
+        const { data, error } = await supabase.rpc('award_daily_login')
+        if (error) {
+          console.error('Error awarding daily login:', error.message)
+        } else if (data) {
+          console.log('Daily login points awarded!')
+        }
+      } catch (err) {
+        console.error('Error calling award_daily_login:', err)
+      }
+    }
+    checkDailyLogin()
+
+    // Realtime channel for reputation and badges
+    console.log('Subscribing to gamification updates for user:', user.id)
+    const channel = supabase
+      .channel(`user-gamification-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'reputation_logs',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const points = payload.new.points_awarded
+          const action = payload.new.action_type
+          window.dispatchEvent(new CustomEvent('reputation-change', { 
+            detail: { points, action } 
+          }))
+          
+          // Refresh user profile so stats update in real time!
+          fetchUserProfile(user.id).then(updated => {
+            if (updated) setCurrentUser(updated)
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_badges',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Fetch badge details
+          supabase
+            .from('badges')
+            .select('*')
+            .eq('id', payload.new.badge_id)
+            .single()
+            .then(({ data: badge }) => {
+              if (badge) {
+                // Set state and dispatch event
+                setUnlockedBadge(badge)
+                window.dispatchEvent(new CustomEvent('badge-unlock', { detail: badge }))
+              }
+            })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      console.log('Unsubscribing from gamification updates for user:', user.id)
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, fetchUserProfile, setCurrentUser])
+
+  /**
    * Sign up with email and password.
    * The database trigger (handle_new_user) will auto-create the user profile.
    */
@@ -340,6 +419,8 @@ export function AuthProvider({ children }) {
     resetPassword,
     updateProfile,
     isAdmin,
+    unlockedBadge,
+    setUnlockedBadge,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

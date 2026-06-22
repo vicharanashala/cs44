@@ -513,8 +513,9 @@ npm install
 
 1. Create a new project on the [Supabase Dashboard](https://supabase.com/dashboard)
 2. Navigate to **SQL Editor** → **New Query** → **Blank Query**
-3. Copy the entire contents of [`supabase/schema.sql`](supabase/schema.sql) and paste into the editor
-4. Click **Run** — this creates all tables, triggers, RLS policies, indexes, and seed data
+3. Copy the entire contents of [`supabase/schema.sql`](supabase/schema.sql) and paste into the editor, then click **Run** to set up the core Q&A platform schema, triggers, RLS policies, indexes, and seed data.
+4. Open another new query tab, copy the entire contents of [`supabase/migration.sql`](supabase/migration.sql) and click **Run** to set up the Reputation, Badge, and Leaderboard triggers, RPC functions, and achievement definitions.
+5. In your Supabase Dashboard, go to **Database** → **Replication** → **Source** (select tables), and enable **Realtime** for `reputation_logs` and `user_badges` so points notifications and badge unlock popups trigger instantly in real-time.
 
 **3. Storage Configuration**
 
@@ -571,7 +572,7 @@ To activate the admin moderation dashboard:
 | 🚩 **Flag Review Queue** | Review and resolve community-flagged content |
 | 📝 **Admin Notes** | Attach feedback notes to reviewed answers |
 | 🔔 **Auto-Notifications** | Authors are notified of verification decisions in real-time |
-| 🏆 **Reputation Management** | View and manage user reputation and badge assignments |
+| 🏆 **Reputation & Badges** | Perform manual point adjustments (+/-), manually award or revoke badges for any member via an interactive management modal, and view live Leaderboard Analytics and recent reputation log feeds. |
 
 ---
 
