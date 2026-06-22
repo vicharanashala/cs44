@@ -2,43 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Search, X, Command, Mic, Square } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useSpeechToText } from '@/hooks/useSpeechToText'
-import { useTextToSpeech } from '@/hooks/useTextToSpeech'
-
-import { searchVoiceAnswer } from "@/lib/searchVoiceAnswer"
-
+import useTypeahead from '@/hooks/useTypeahead'
 
 export default function SearchBar({ onSearch, variant = 'navbar' }) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const inputRef = useRef(null)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const navigate = useNavigate()
   const debounceRef = useRef(null)
-const { speak } = useTextToSpeech()
-const isVoiceInput = useRef(false)
-
-const updateQuery = (value, debounce = true) => {
-  setQuery(value)
-  if (debounceRef.current) clearTimeout(debounceRef.current)
-
-  if (debounce) {
-    debounceRef.current = setTimeout(() => {
-      onSearch?.(value)
-    }, 300)
-    return
-  }
-
-  onSearch?.(value)
-}
-  const { supported: sttSupported, listening, start, stop } = useSpeechToText({
-  onResult: (text) => {
-        isVoiceInput.current = true
-
-    setQuery(text)
-    
-    updateQuery(text, false)
-  },
-})
+  const { setQuery: setTaQuery, results, loadingServer } = useTypeahead()
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -55,6 +28,10 @@ const updateQuery = (value, debounce = true) => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  const handleChange = (e) => {
+    const value = e.target.value
+    setQuery(value)
+    setTaQuery(value)
 
   const handleChange = (e) => {
     updateQuery(e.target.value)
@@ -111,7 +88,9 @@ const handleSubmit = async (e) => {
   onSearch?.(trimmed)
 }
   const clearQuery = () => {
-    updateQuery('', false)
+    setQuery('')
+    setTaQuery('')
+    onSearch?.('')
     inputRef.current?.focus()
   }
 
@@ -162,6 +141,33 @@ const handleSubmit = async (e) => {
             }
           `}
         />
+        {/* Suggestions dropdown */}
+        {focused && (results.length > 0 || loadingServer) && (
+          <ul
+            id="typeahead-list"
+            role="listbox"
+            className="absolute left-0 right-0 mt-2 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden max-h-72 overflow-auto"
+          >
+            {results.map((r, i) => (
+              <li
+                key={r.id}
+                role="option"
+                aria-selected={i === activeIndex}
+                onMouseDown={() => {
+                  navigate(`/question/${r.id}`)
+                }}
+                onMouseEnter={() => setActiveIndex(i)}
+                className={`px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer ${i === activeIndex ? 'bg-slate-100 dark:bg-slate-700' : ''}`}
+              >
+                <div className="text-sm font-medium text-slate-800 dark:text-white truncate">{r.title}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">{r.answer_count ? `${r.answer_count} answers` : ''}</div>
+              </li>
+            ))}
+            {loadingServer && (
+              <li className="px-4 py-3 text-sm text-slate-500">Searching online…</li>
+            )}
+          </ul>
+        )}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
           {listening && (
     <div className="absolute -top-6 right-0 text-xs text-white-500 animate-pulse whitespace-nowrap">
