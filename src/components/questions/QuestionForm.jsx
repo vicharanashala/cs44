@@ -1,85 +1,81 @@
-import { useState, useEffect ,useRef} from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
-import { Send, Paperclip, X, AlertCircle, Mic, Square, Volume2, StopCircle } from 'lucide-react'
+import { Send, Paperclip, X, AlertCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { useCategories } from '@/hooks/useCategories'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { useToast } from '@/components/ui/Toast'
-import { useSpeechToText } from '@/hooks/useSpeechToText'
-import { useTextToSpeech } from '@/hooks/useTextToSpeech'
+import { spamApi } from '@/lib/spamApi'
+import { analyzeContentSpam } from '@/lib/spamDetector'
 
 export default function QuestionForm({ onSubmit, loading: submitLoading }) {
-  const { register, handleSubmit, formState: { errors }, watch, reset, setValue } = useForm()
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm()
   const { categories, fetchCategories } = useCategories()
   const { uploadFile, uploading, ALLOWED_EXTENSIONS } = useFileUpload()
   const { showToast } = useToast()
   const [file, setFile] = useState(null)
   const [tagsInput, setTagsInput] = useState('')
-  const [activeField, setActiveField] = useState(null)
   
-const activeFieldRef = useRef(null) 
-  const titleValue = watch('title') || ''
-  const descriptionValue = watch('description') || ''
-  console.log("TITLE:", titleValue)
-console.log("DESCRIPTION:", descriptionValue)
-useEffect(() => {
-  console.log("TITLE VALUE:", titleValue)
-}, [titleValue])
-
-useEffect(() => {
-  console.log("DESCRIPTION VALUE:", descriptionValue)
-}, [descriptionValue])
- 
-  const { supported: sttSupported, listening, start, stop } = useSpeechToText({
-    
-  onResult: (text, meta) => {
-  console.log("VOICE RESULT:", text, meta)
-  console.log("ACTIVE FIELD:", activeField)
-
-
-  if (!activeFieldRef.current) return
-  setValue(activeField, text, {
-    shouldDirty: true,
-    shouldValidate: true,
-  })
-  }
-
-  });
-  const { supported: ttsSupported, speakingId, speak, stop: stopSpeak } = useTextToSpeech()
+  const [spamRules, setSpamRules] = useState(null)
+  const [spamSettings, setSpamSettings] = useState(null)
+  const [qualityReport, setQualityReport] = useState(null)
+  
+  const titleVal = watch('title') || ''
+  const descriptionVal = watch('description') || ''
 
   useEffect(() => {
     fetchCategories()
+    
+    async function loadSpamRules() {
+      try {
+        const rules = await spamApi.getRules()
+        const settings = await spamApi.getSettings()
+        setSpamRules(rules)
+        setSpamSettings(settings)
+      } catch (e) {
+        console.error('Failed to load rules for real-time validation:', e)
+      }
+    }
+    loadSpamRules()
   }, [fetchCategories])
-  const toggleDictation = (field) => {
-      console.log("MIC CLICKED:", field)
-    if (!sttSupported) return
-    if (listening && activeField === field) {
-      stop()
-      setActiveField(null)
-         activeFieldRef.current = null 
-      return
-    }
-    stop()
-    setActiveField(field)
-     activeFieldRef.current = field   
-    start()
-  }
 
-  const toggleReadout = (field) => {
-    if (!ttsSupported) return
-    const value = field === 'title' ? titleValue : descriptionValue
-    if (!value) return
-    if (speakingId === field) {
-      stopSpeak()
-      return
-    }
-    speak(value, field)
-  }
+  useEffect(() => {
+    if (!spamRules || !spamSettings) return
 
-  const isDictating = (field) => listening && activeField === field
-  const isSpeaking = (field) => speakingId === field
+    const delayDebounce = setTimeout(() => {
+      const combinedText = `${titleVal}\n\n${descriptionVal}`
+      if (combinedText.trim().length < 3) {
+        setQualityReport(null)
+        return
+      }
+
+      const rulesMap = {}
+      spamRules.forEach(r => {
+        rulesMap[r.id] = { 
+          name: r.name, 
+          weight: r.weight, 
+          isEnabled: r.is_enabled !== undefined ? r.is_enabled : true 
+        }
+      })
+
+      const thresholds = {
+        needsReview: spamSettings.threshold_needs_review,
+        spam: spamSettings.threshold_spam,
+        critical: spamSettings.threshold_critical
+      }
+
+      const report = analyzeContentSpam(combinedText, {
+        rules: rulesMap,
+        thresholds,
+      })
+
+      setQualityReport(report)
+    }, 500)
+
+    return () => clearTimeout(delayDebounce)
+  }, [titleVal, descriptionVal, spamRules, spamSettings])
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -118,7 +114,6 @@ useEffect(() => {
       })
 
       reset()
-   
       setFile(null)
       setTagsInput('')
     } catch (err) {
@@ -135,60 +130,17 @@ useEffect(() => {
       transition={{ duration: 0.4 }}
     >
       <div>
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Question Title *
-          </label>
-          <div className="flex items-center gap-2">
-  {isDictating('title') && (
-    <span className="text-xs text-red-500 animate-pulse whitespace-nowrap">
-      🎙 Listening
-    </span>
-  )}
-            <button
-              type="button"
-              onClick={() => toggleReadout('title')}
-              disabled={!ttsSupported || !titleValue}
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold transition-colors ${
-                ttsSupported && titleValue
-                  ? 'text-indigo-500 hover:text-indigo-600'
-                  : 'text-slate-400 cursor-not-allowed'
-              }`}
-              aria-label={isSpeaking('title') ? 'Stop readout' : 'Read title'}
-              title={ttsSupported ? (isSpeaking('title') ? 'Stop readout' : 'Read title') : 'Readout not supported'}
-            >
-              {isSpeaking('title') ? <StopCircle className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              {isSpeaking('title') ? 'Stop' : 'Read'}
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleDictation('title')}
-              disabled={!sttSupported}
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold transition-colors ${
-                sttSupported
-                  ? 'text-indigo-500 hover:text-indigo-600'
-                  : 'text-slate-400 cursor-not-allowed'
-              }`}
-              aria-label={isDictating('title') ? 'Stop voice typing' : 'Start voice typing'}
-              title={sttSupported ? (isDictating('title') ? 'Stop voice typing' : 'Start voice typing') : 'Voice typing not supported'}
-            >
-              {isDictating('title') ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              {isDictating('title') ? 'Stop' : 'Voice'}
-            </button>
-          </div>
-        </div>
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+          Question Title *
+        </label>
         <input
-
           {...register('title', {
             required: 'Title is required',
             minLength: { value: 10, message: 'Title must be at least 10 characters' },
-              
           })}
-          //  value={titleValue}
           placeholder="What's your question? Be specific..."
           className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-300"
         />
-
         {errors.title && (
           <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
@@ -198,61 +150,18 @@ useEffect(() => {
       </div>
 
       <div>
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-            Description *
-          </label>
-          <div className="flex items-center gap-2">
-              {isDictating('description') && (
-    <span className="text-xs text-red-500 animate-pulse whitespace-nowrap">
-      🎙 Listening
-    </span>
-              )}
-            <button
-              type="button"
-              onClick={() => toggleReadout('description')}
-              disabled={!ttsSupported || !descriptionValue}
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold transition-colors ${
-                ttsSupported && descriptionValue
-                  ? 'text-indigo-500 hover:text-indigo-600'
-                  : 'text-slate-400 cursor-not-allowed'
-              }`}
-              aria-label={isSpeaking('description') ? 'Stop readout' : 'Read description'}
-              title={ttsSupported ? (isSpeaking('description') ? 'Stop readout' : 'Read description') : 'Readout not supported'}
-            >
-              {isSpeaking('description') ? <StopCircle className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              {isSpeaking('description') ? 'Stop' : 'Read'}
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleDictation('description')}
-              disabled={!sttSupported}
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold transition-colors ${
-                sttSupported
-                  ? 'text-indigo-500 hover:text-indigo-600'
-                  : 'text-slate-400 cursor-not-allowed'
-              }`}
-              aria-label={isDictating('description') ? 'Stop voice typing' : 'Start voice typing'}
-              title={sttSupported ? (isDictating('description') ? 'Stop voice typing' : 'Start voice typing') : 'Voice typing not supported'}
-            >
-              {isDictating('description') ? <Square className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              {isDictating('description') ? 'Stop' : 'Voice'}
-            </button>
-          </div>
-        </div>
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+          Description *
+        </label>
         <textarea
-   
           {...register('description', {
             required: 'Description is required',
             minLength: { value: 20, message: 'Description must be at least 20 characters' },
           })}
-      // value={descriptionValue}
           placeholder="Provide more details about your question..."
           rows={6}
-
           className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all duration-300 resize-none"
         />
-
         {errors.description && (
           <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
             <AlertCircle className="w-3.5 h-3.5" />
@@ -337,6 +246,69 @@ useEffect(() => {
           </label>
         )}
       </div>
+
+      {qualityReport && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-2xl bg-white/60 dark:bg-slate-855/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 shadow-lg space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-extrabold text-slate-750 dark:text-slate-250 uppercase tracking-wider">
+                Live Quality Assessment
+              </h4>
+              <p className="text-xs text-slate-400">Heuristic spam scan analyzing your input in real-time.</p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-extrabold ${
+              qualityReport.classification === 'SAFE' 
+                ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                : qualityReport.classification === 'SUSPICIOUS' 
+                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                : 'bg-red-500/10 text-red-500 border border-red-500/20'
+            }`}>
+              {qualityReport.classification === 'SAFE' ? 'Safe to Post' : qualityReport.classification === 'SUSPICIOUS' ? 'Needs Admin Review' : 'Spam Blocked'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex justify-between text-xs font-semibold mb-1">
+                <span>Spam Score</span>
+                <span>{qualityReport.spamScore} / 100</span>
+              </div>
+              <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    qualityReport.spamScore >= 60 ? 'bg-red-500' : qualityReport.spamScore >= 30 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(qualityReport.spamScore, 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {qualityReport.detectors && qualityReport.detectors.length > 0 && (
+             <div className="space-y-2">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Triggered Signals</span>
+                <div className="flex flex-wrap gap-2">
+                  {qualityReport.detectors.map((det, i) => (
+                    <span key={i} className="px-2.5 py-1 bg-white dark:bg-slate-900/60 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-slate-200/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                      {det.name} (+{det.score})
+                    </span>
+                  ))}
+                </div>
+             </div>
+          )}
+
+          {qualityReport.classification !== 'SAFE' && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/5 p-3 rounded-xl border border-amber-500/10">
+              <strong>Note:</strong> Your content triggers spam flags. {qualityReport.classification === 'SUSPICIOUS' ? 'It will require administrator approval before going public.' : 'Posting will be blocked to maintain platform safety.'}
+            </p>
+          )}
+        </motion.div>
+      )}
 
       <div className="flex justify-end pt-2">
         <Button
