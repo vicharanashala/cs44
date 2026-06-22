@@ -336,7 +336,6 @@ export default function AnswerCard({ answer, isOwner, isAdmin, onVerify, onRejec
             </div>
           )}
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
   )
 }
