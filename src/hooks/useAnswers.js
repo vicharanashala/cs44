@@ -233,6 +233,23 @@ export function useAnswers() {
       setLoading(false)
     }
   }, [])
+
+  const acceptAnswer = useCallback(async (answerId) => {
+    setLoading(true)
+    try {
+      const { data, error: rpcError } = await supabase.rpc('accept_answer', {
+        a_id: answerId
+      })
+      if (rpcError) throw rpcError
+      return data
+    } catch (err) {
+      setError(err.message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   return {
     answers,
     loading,
@@ -244,5 +261,6 @@ export function useAnswers() {
     markSpam,
     deleteAnswer,
     fetchUserAnswers,
+    acceptAnswer,
   }
 }

@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+
+
+import { useState, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronUp, Eye, Clock, Paperclip, ChevronRight, Home, Tag } from 'lucide-react'
+import { ChevronUp, ChevronDown, Eye, Clock, Paperclip, ChevronRight, Home, Tag, Trash2, MoreVertical, Flag, Volume2, StopCircle } from 'lucide-react'
+
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
 import Card from '@/components/ui/Card'
@@ -17,6 +20,8 @@ import { useToast } from '@/components/ui/Toast'
 import { useTranslation } from '@/hooks/useTranslation'
 import TranslationButton from '@/components/translation/TranslationButton'
 import TranslationBadge from '@/components/translation/TranslationBadge'
+import ReportModal from '@/components/ui/ReportModal'
+import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 
 function timeAgo(dateString) {
   const now = new Date()
@@ -34,13 +39,19 @@ function timeAgo(dateString) {
 
 export default function QuestionDetailPage() {
   const { id } = useParams()
-  const { question, loading: qLoading, fetchQuestionById } = useQuestions()
-  const { answers, loading: aLoading, fetchAnswers, verifyAnswer, rejectAnswer, markSpam, deleteAnswer } = useAnswers()
-  const { toggleQuestionUpvote, hasUpvotedQuestion } = useUpvote()
+  const { question, loading: qLoading, fetchQuestionById, deleteQuestion } = useQuestions()
+  const { answers, loading: aLoading, fetchAnswers, verifyAnswer, rejectAnswer, markSpam, deleteAnswer, acceptAnswer } = useAnswers()
+  const { toggleQuestionVote, hasUpvotedQuestion, hasDownvotedQuestion } = useUpvote()
   const { user, isAdmin } = useAuth()
   const { showToast } = useToast()
+  const navigate = useNavigate()
+  const { supported: ttsSupported, speakingId, speak, stop: stopSpeak } = useTextToSpeech()
+  
   const [upvoted, setUpvoted] = useState(false)
-  const [localUpvotes, setLocalUpvotes] = useState(0)
+  const [downvoted, setDownvoted] = useState(false)
+  const [localScore, setLocalScore] = useState(0)
+  const [showMenu, setShowMenu] = useState(false)
+  const [reportModal, setReportModal] = useState({ open: false, type: 'question', id: null })
 
   const preferredLanguage = user?.preferred_language || 'en'
   const titleTranslation = useTranslation({
@@ -63,14 +74,26 @@ export default function QuestionDetailPage() {
     }
   }, [id, fetchQuestionById, fetchAnswers])
 
+  const [prevQuestion, setPrevQuestion] = useState(question)
+  const [prevUserId, setPrevUserId] = useState(user?.id)
+
+  if (question !== prevQuestion) {
+    setPrevQuestion(question)
+    setLocalScore((question?.upvotes || 0) - (question?.downvotes || 0))
+  }
+
+  if (user?.id !== prevUserId) {
+    setPrevUserId(user?.id)
+    setUpvoted(false)
+    setDownvoted(false)
+  }
+
   useEffect(() => {
-    if (question) {
-      setLocalUpvotes(question.upvotes || 0)
-      if (user) {
-        hasUpvotedQuestion(question.id).then(setUpvoted)
-      }
+    if (question && user) {
+      hasUpvotedQuestion(question.id).then(setUpvoted)
+      hasDownvotedQuestion(question.id).then(setDownvoted)
     }
-  }, [question, user, hasUpvotedQuestion])
+  }, [question, user, hasUpvotedQuestion, hasDownvotedQuestion])
 
   const handleUpvote = async () => {
     if (!user) {
@@ -78,11 +101,55 @@ export default function QuestionDetailPage() {
       return
     }
     try {
-      await toggleQuestionUpvote(question.id)
-      setUpvoted(!upvoted)
-      setLocalUpvotes(prev => upvoted ? prev - 1 : prev + 1)
+      await toggleQuestionVote(question.id, true)
+      if (upvoted) {
+        setUpvoted(false)
+        setLocalScore(prev => prev - 1)
+      } else {
+        setUpvoted(true)
+        if (downvoted) {
+          setDownvoted(false)
+          setLocalScore(prev => prev + 2)
+        } else {
+          setLocalScore(prev => prev + 1)
+        }
+      }
     } catch (err) {
-      showToast('Failed to upvote', 'error')
+      showToast(err.message || 'Failed to upvote', 'error')
+    }
+  }
+
+  const handleDownvote = async () => {
+    if (!user) {
+      showToast('Please sign in to downvote', 'info')
+      return
+    }
+    try {
+      await toggleQuestionVote(question.id, false)
+      if (downvoted) {
+        setDownvoted(false)
+        setLocalScore(prev => prev + 1)
+      } else {
+        setDownvoted(true)
+        if (upvoted) {
+          setUpvoted(false)
+          setLocalScore(prev => prev - 2)
+        } else {
+          setLocalScore(prev => prev - 1)
+        }
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to downvote', 'error')
+    }
+  }
+
+  const handleAcceptAnswer = async (answerId) => {
+    try {
+      await acceptAnswer(answerId)
+      showToast('Answer acceptance updated!', 'success')
+      fetchAnswers(id)
+    } catch (err) {
+      showToast(err.message || 'Failed to accept answer', 'error')
     }
   }
 
@@ -91,7 +158,7 @@ export default function QuestionDetailPage() {
       await verifyAnswer(answerId)
       showToast('Answer verified!', 'success')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to verify', 'error')
     }
   }
@@ -101,7 +168,7 @@ export default function QuestionDetailPage() {
       await rejectAnswer(answerId)
       showToast('Answer rejected', 'info')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to reject', 'error')
     }
   }
@@ -111,7 +178,7 @@ export default function QuestionDetailPage() {
       await markSpam(answerId)
       showToast('Marked as spam', 'info')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to mark spam', 'error')
     }
   }
@@ -121,13 +188,29 @@ export default function QuestionDetailPage() {
       await deleteAnswer(answerId)
       showToast('Answer deleted', 'info')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to delete', 'error')
     }
   }
 
   const handleAnswerSubmitted = () => {
     fetchAnswers(id)
+  }
+
+  const handleFlagClick = (flagId, type) => {
+    setReportModal({ open: true, type, id: flagId })
+  }
+
+  const handleQuestionDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      try {
+        await deleteQuestion(question.id)
+        showToast('Question deleted successfully', 'success')
+        navigate('/')
+      } catch (err) {
+        showToast(err.message || 'Failed to delete question', 'error')
+      }
+    }
   }
 
   if (qLoading) {
@@ -173,10 +256,10 @@ export default function QuestionDetailPage() {
       <Card className="p-6 md:p-8 mb-8">
         <div className="flex gap-5">
           {/* Vote Column */}
-          <div className="flex flex-col items-center gap-1 shrink-0">
+          <div className="flex flex-col items-center gap-1.5 shrink-0">
             <button
               onClick={handleUpvote}
-              className={`p-2 rounded-xl transition-all duration-200 ${
+              className={`p-2 rounded-xl transition-all duration-200 cursor-pointer ${
                 upvoted
                   ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30'
                   : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -184,16 +267,26 @@ export default function QuestionDetailPage() {
             >
               <ChevronUp className="w-6 h-6" />
             </button>
-            <span className={`text-lg font-bold ${upvoted ? 'text-indigo-600' : 'text-slate-600 dark:text-slate-400'}`}>
-              {localUpvotes}
+            
+            <span className={`text-lg font-bold transition-colors ${upvoted ? 'text-indigo-600' : downvoted ? 'text-rose-500' : 'text-slate-650 dark:text-slate-400'}`}>
+              {localScore}
             </span>
-          </div>
 
-          {/* Content */}
+            <button
+              onClick={handleDownvote}
+              className={`p-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                downvoted
+                  ? 'text-rose-550 bg-rose-50 dark:bg-rose-900/30'
+                  : 'text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <ChevronDown className="w-6 h-6" />
+            </button>
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-4 mb-4">
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="flex-1 pr-2">
                   <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
                     {titleTranslation.displayText}
                   </h1>
@@ -206,42 +299,111 @@ export default function QuestionDetailPage() {
                     </div>
                   )}
                 </div>
-                <TranslationButton
-                  originalLanguage={titleTranslation.originalLanguage}
-                  currentLanguage={titleTranslation.currentLanguage}
-                  isTranslated={titleTranslation.isTranslated}
-                  status={titleTranslation.status}
-                  error={titleTranslation.error}
-                  onTranslate={titleTranslation.translate}
-                  onReset={titleTranslation.resetTranslation}
-                />
-              </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <TranslationButton
+                    originalLanguage={titleTranslation.originalLanguage}
+                    currentLanguage={titleTranslation.currentLanguage}
+                    isTranslated={titleTranslation.isTranslated}
+                    status={titleTranslation.status}
+                    error={titleTranslation.error}
+                    onTranslate={titleTranslation.translate}
+                    onReset={titleTranslation.resetTranslation}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!ttsSupported) return;
+                      const speechId = `question-detail-${question.id}`;
+                      if (speakingId === speechId) {
+                        stopSpeak();
+                        return;
+                      }
+                      const textToSpeak = `${titleTranslation.displayText}. ${descriptionTranslation.displayText || ''}`;
+                      speak(textToSpeak, speechId, titleTranslation.currentLanguage || 'en-US');
+                    }}
+                    disabled={!ttsSupported}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      ttsSupported
+                        ? speakingId === `question-detail-${question.id}`
+                          ? 'text-indigo-650 dark:text-indigo-405 bg-indigo-500/10'
+                          : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                    }`}
+                    aria-label={speakingId === `question-detail-${question.id}` ? 'Stop readout' : 'Read question'}
+                    title={ttsSupported ? (speakingId === `question-detail-${question.id}` ? 'Stop readout' : 'Read question') : 'Readout not supported'}
+                  >
+                    {speakingId === `question-detail-${question.id}` ? <StopCircle className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+                </div>
 
-              <div className="prose prose-slate dark:prose-invert max-w-none">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                      {descriptionTranslation.displayText}
-                    </p>
-                    {descriptionTranslation.isTranslated && (
-                      <div className="mt-2">
-                        <TranslationBadge
-                          originalLanguage={descriptionTranslation.originalLanguage}
-                          targetLanguage={descriptionTranslation.currentLanguage}
+                {/* Option Menu (Report Question) */}
+                {user && question.user_id !== user.id && (
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowMenu(!showMenu);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-405 hover:text-slate-655 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 cursor-pointer transition-colors"
+                      aria-label="Options"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+
+                    {showMenu && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-30"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMenu(false);
+                          }}
                         />
-                      </div>
+                        <div className="absolute right-0 mt-1 w-38 bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-xl shadow-lg py-1 z-40">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMenu(false);
+                              handleFlagClick(question.id, 'question');
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-650 dark:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Flag className="w-3.5 h-3.5" />
+                            Report Question
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
-                  <TranslationButton
-                    originalLanguage={descriptionTranslation.originalLanguage}
-                    currentLanguage={descriptionTranslation.currentLanguage}
-                    isTranslated={descriptionTranslation.isTranslated}
-                    status={descriptionTranslation.status}
-                    error={descriptionTranslation.error}
-                    onTranslate={descriptionTranslation.translate}
-                    onReset={descriptionTranslation.resetTranslation}
-                  />
+                )}
+              </div>
+            </div>
+
+            <div className="prose prose-slate dark:prose-invert max-w-none">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    {descriptionTranslation.displayText}
+                  </p>
+                  {descriptionTranslation.isTranslated && (
+                    <div className="mt-2">
+                      <TranslationBadge
+                        originalLanguage={descriptionTranslation.originalLanguage}
+                        targetLanguage={descriptionTranslation.currentLanguage}
+                      />
+                    </div>
+                  )}
                 </div>
+                <TranslationButton
+                  originalLanguage={descriptionTranslation.originalLanguage}
+                  currentLanguage={descriptionTranslation.currentLanguage}
+                  isTranslated={descriptionTranslation.isTranslated}
+                  status={descriptionTranslation.status}
+                  error={descriptionTranslation.error}
+                  onTranslate={descriptionTranslation.translate}
+                  onReset={descriptionTranslation.resetTranslation}
+                />
               </div>
             </div>
 
@@ -284,6 +446,16 @@ export default function QuestionDetailPage() {
                   Attachment
                 </span>
               )}
+              {(isAdmin || (user && (user.id === question.user_id || user.id === question.users?.id))) && (
+                <button
+                  onClick={handleQuestionDelete}
+                  className="flex items-center gap-1 text-sm text-red-500 hover:text-red-600 dark:hover:text-red-450 transition-colors font-semibold cursor-pointer"
+                  title="Delete Question"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Question
+                </button>
+              )}
               <div className="ml-auto flex items-center gap-2">
                 <Avatar
                   src={question.users?.avatar}
@@ -302,24 +474,34 @@ export default function QuestionDetailPage() {
         </div>
       </Card>
 
-      {/* Answers Section */}
       <div className="mb-8">
         <AnswerList
           answers={answers}
           loading={aLoading}
           isAdmin={isAdmin}
           userId={user?.id}
+          isQuestionOwner={user && (user.id === question.user_id || user.id === question.users?.id)}
           onVerify={handleVerify}
           onReject={handleReject}
           onDelete={handleDelete}
           onSpam={handleSpam}
+          onAccept={handleAcceptAnswer}
         />
       </div>
-
       {/* Answer Form */}
       <div className="mb-8">
         <AnswerForm questionId={id} onSubmitted={handleAnswerSubmitted} />
       </div>
+
+      {/* Report Modal */}
+      {reportModal.open && (
+        <ReportModal
+          isOpen={reportModal.open}
+          onClose={() => setReportModal({ open: false, type: 'question', id: null })}
+          contentType={reportModal.type}
+          contentId={reportModal.id}
+        />
+      )}
     </motion.div>
   )
 }

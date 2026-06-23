@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BookOpen,
   Briefcase,
   GraduationCap,
   FileText,
@@ -12,10 +11,14 @@ import {
   HelpCircle,
   ArrowRight,
   Sparkles,
-} from 'lucide-react';import { useAuth } from '@/hooks/useAuth';
+  Volume2,
+  StopCircle,
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import TranslationButton from '@/components/translation/TranslationButton';
 import TranslationBadge from '@/components/translation/TranslationBadge';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 const faqCategories = [
   {
     id: 1,
@@ -121,21 +124,29 @@ const faqCategories = [
 
 export default function FaqPage() {
   const { id } = useParams();
-  const [activeCategory, setActiveCategory] = useState(1);
+  const [activeCategory, setActiveCategory] = useState(() => {
+    if (id) {
+      const parsedId = parseInt(id, 10);
+      const exists = faqCategories.some((cat) => cat.id === parsedId);
+      if (exists) return parsedId;
+    }
+    return 1;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedIndex, setExpandedIndex] = useState(null);
 
-  // Automatically update active category if accessed via specific FAQ ID
-  useEffect(() => {
+  const [prevId, setPrevId] = useState(id);
+  if (id !== prevId) {
+    setPrevId(id);
     if (id) {
       const parsedId = parseInt(id, 10);
       const exists = faqCategories.some((cat) => cat.id === parsedId);
       if (exists) {
         setActiveCategory(parsedId);
-        setExpandedIndex(null); // Reset expansions when changing categories
+        setExpandedIndex(null);
       }
     }
-  }, [id]);
+  }
 
   const { user } = useAuth();
   const preferredLanguage = user?.preferred_language || 'en';
@@ -157,6 +168,10 @@ export default function FaqPage() {
 
   function FaqItem({ item, idx, isExpanded, onToggle, showLink, activeCategory }) {
     const categoryId = item.categoryId ?? activeCategory
+    const { supported: ttsSupported, speakingId, speak, stop: stopSpeak } = useTextToSpeech()
+    const speechId = `faq-${categoryId}-${idx}`
+    const isSpeaking = speakingId === speechId
+
     const questionTranslation = useTranslation({
       contentId: `faq-question-${categoryId}-${idx}`,
       content: item.q,
@@ -235,15 +250,40 @@ export default function FaqPage() {
                       targetLanguage={questionTranslation.currentLanguage}
                     />
                   )}
-                  <TranslationButton
-                    originalLanguage={questionTranslation.originalLanguage}
-                    currentLanguage={questionTranslation.currentLanguage}
-                    isTranslated={questionTranslation.isTranslated}
-                    status={questionTranslation.status || answerTranslation.status}
-                    error={questionTranslation.error || answerTranslation.error}
-                    onTranslate={handleTranslate}
-                    onReset={handleReset}
-                  />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <TranslationButton
+                      originalLanguage={questionTranslation.originalLanguage}
+                      currentLanguage={questionTranslation.currentLanguage}
+                      isTranslated={questionTranslation.isTranslated}
+                      status={questionTranslation.status || answerTranslation.status}
+                      error={questionTranslation.error || answerTranslation.error}
+                      onTranslate={handleTranslate}
+                      onReset={handleReset}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!ttsSupported) return;
+                        if (isSpeaking) {
+                          stopSpeak();
+                          return;
+                        }
+                        speak(answerTranslation.displayText, speechId, answerTranslation.currentLanguage || 'en-US');
+                      }}
+                      disabled={!ttsSupported}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        ttsSupported
+                          ? isSpeaking
+                            ? 'text-indigo-650 dark:text-indigo-405 bg-indigo-500/10'
+                            : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                          : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                      }`}
+                      aria-label={isSpeaking ? 'Stop readout' : 'Read answer'}
+                      title={ttsSupported ? (isSpeaking ? 'Stop readout' : 'Read answer') : 'Readout not supported'}
+                    >
+                      {isSpeaking ? <StopCircle className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{answerTranslation.displayText}</p>

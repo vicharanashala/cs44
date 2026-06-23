@@ -34,6 +34,13 @@ export default function useTypeahead({
   const abortRef = useRef(null)
   const cacheRef = useRef(new Map()) // simple in-memory cache for server queries
 
+  function dedupeMerge(local, server) {
+    const map = new Map()
+    ;(local || []).forEach(i => map.set(i.id, i))
+    ;(server || []).forEach(i => map.set(i.id, i))
+    return Array.from(map.values()).slice(0, localMax)
+  }
+
   const buildFuse = useCallback(() => {
     fuseRef.current = new Fuse(indexRef.current, defaultOptions)
   }, [])
@@ -74,7 +81,7 @@ export default function useTypeahead({
       if (persist) {
         try {
           localStorage.setItem(LOCAL_INDEX_KEY, JSON.stringify(minimal))
-        } catch (_) {
+        } catch {
           // ignore storage errors
         }
       }
@@ -91,38 +98,6 @@ export default function useTypeahead({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (!query || query.length < minChars) {
-      setResults([])
-      return
-    }
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(async () => {
-      const q = query.trim()
-      // local search
-      let localItems = []
-      if (fuseRef.current) {
-        const local = fuseRef.current.search(q, { limit: localMax })
-        localItems = local.map(r => ({ ...r.item, _score: r.score, _matches: r.matches || [] }))
-      }
-
-      const bestScore = localItems[0]?._score ?? 1
-      if (localItems.length >= 1 && bestScore <= acceptScore) {
-        setResults(localItems)
-        // fire an optional background server fetch to warm cache
-        doServerFetch(q, false).catch(() => {})
-      } else {
-        // show local if present, then fallback to server
-        setResults(localItems)
-        await doServerFetch(q, true)
-      }
-    }, debounceMs)
-
-    return () => clearTimeout(debounceRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query])
   async function doServerFetch(q, replaceVisible = true) {
     if (!q) return
     if (cacheRef.current.has(q)) {
@@ -166,12 +141,38 @@ export default function useTypeahead({
     }
   }
 
-  function dedupeMerge(local, server) {
-    const map = new Map()
-    ;(local || []).forEach(i => map.set(i.id, i))
-    ;(server || []).forEach(i => map.set(i.id, i))
-    return Array.from(map.values()).slice(0, localMax)
-  }
+  useEffect(() => {
+    if (!query || query.length < minChars) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResults([])
+      return
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      const q = query.trim()
+      // local search
+      let localItems = []
+      if (fuseRef.current) {
+        const local = fuseRef.current.search(q, { limit: localMax })
+        localItems = local.map(r => ({ ...r.item, _score: r.score, _matches: r.matches || [] }))
+      }
+
+      const bestScore = localItems[0]?._score ?? 1
+      if (localItems.length >= 1 && bestScore <= acceptScore) {
+        setResults(localItems)
+        // fire an optional background server fetch to warm cache
+        doServerFetch(q, false).catch(() => {})
+      } else {
+        // show local if present, then fallback to server
+        setResults(localItems)
+        await doServerFetch(q, true)
+      }
+    }, debounceMs)
+
+    return () => clearTimeout(debounceRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
 
   return {
     query,

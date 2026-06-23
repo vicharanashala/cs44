@@ -5,7 +5,7 @@ import AnswerCard from './AnswerCard'
 import { AnswerSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 
-export default function AnswerList({ answers, loading, isAdmin, userId, onVerify, onReject, onDelete, onSpam }) {
+export default function AnswerList({ answers, loading, isAdmin, userId, isQuestionOwner, onVerify, onReject, onDelete, onSpam, onAccept }) {
   const [sortBy, setSortBy] = useState('newest')
 
   if (loading) {
@@ -19,9 +19,17 @@ export default function AnswerList({ answers, loading, isAdmin, userId, onVerify
   }
 
   const sorted = [...(answers || [])].sort((a, b) => {
+    // Accepted answer always floats to the top
+    if (a.is_accepted && !b.is_accepted) return -1
+    if (!a.is_accepted && b.is_accepted) return 1
+
     if (sortBy === 'newest') return new Date(b.created_at) - new Date(a.created_at)
     if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at)
-    if (sortBy === 'upvoted') return (b.upvotes || 0) - (a.upvotes || 0)
+    if (sortBy === 'upvoted') {
+      const scoreA = (a.upvotes || 0) - (a.downvotes || 0)
+      const scoreB = (b.upvotes || 0) - (b.downvotes || 0)
+      return scoreB - scoreA
+    }
     return 0
   })
 
@@ -82,10 +90,12 @@ export default function AnswerList({ answers, loading, isAdmin, userId, onVerify
                 answer={answer}
                 isOwner={userId === answer.user_id}
                 isAdmin={isAdmin}
+                isQuestionOwner={isQuestionOwner}
                 onVerify={onVerify}
                 onReject={onReject}
                 onDelete={onDelete}
                 onSpam={onSpam}
+                onAccept={onAccept}
               />
             </motion.div>
           ))}

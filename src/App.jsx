@@ -1,6 +1,8 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { useAuth } from './hooks/useAuth'
+import { useToast } from './components/ui/Toast'
+import { useEffect } from 'react'
 
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -14,8 +16,11 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ProfilePage from './pages/ProfilePage'
+import LeaderboardPage from './pages/LeaderboardPage'
 import AdminDashboard from './pages/AdminDashboard'
+import ModerationQueue from './pages/ModerationQueue'
 import NotFoundPage from './pages/NotFoundPage'
+import BadgeUnlockModal from './components/ui/BadgeUnlockModal'
 
 function GuestRoute({ children }) {
   const { user, loading } = useAuth()
@@ -26,9 +31,38 @@ function GuestRoute({ children }) {
 
 export default function App() {
   const location = useLocation()
+  const { showToast } = useToast()
+
+  useEffect(() => {
+    const handleReputationChange = (e) => {
+      const { points, action } = e.detail
+      const sign = points >= 0 ? '+' : ''
+      
+      const formatAction = (act) => {
+        switch (act) {
+          case 'ask_question': return 'Asked a Question'
+          case 'post_answer': return 'Posted an Answer'
+          case 'question_upvote': return 'Question Upvoted'
+          case 'question_downvote': return 'Question Downvoted'
+          case 'answer_upvote': return 'Answer Upvoted'
+          case 'answer_downvote': return 'Answer Downvoted'
+          case 'answer_accepted': return 'Answer Accepted'
+          case 'daily_login': return 'Daily Login Bonus'
+          case 'admin_adjustment': return 'Admin Adjustment'
+          default: return act.replace('_', ' ')
+        }
+      }
+      
+      showToast(`Reputation: ${sign}${points} points (${formatAction(action)})`, points >= 0 ? 'success' : 'warning')
+    }
+
+    window.addEventListener('reputation-change', handleReputationChange)
+    return () => window.removeEventListener('reputation-change', handleReputationChange)
+  }, [showToast])
 
   return (
     <Layout>
+      <BadgeUnlockModal />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<HomePage />} />
@@ -36,6 +70,7 @@ export default function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/faq/:id" element={<FaqPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
 
           <Route path="/ask" element={
             <ProtectedRoute>
@@ -52,6 +87,12 @@ export default function App() {
           <Route path="/admin" element={
             <ProtectedRoute requireAdmin>
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/moderation" element={
+            <ProtectedRoute requireAdmin>
+              <ModerationQueue />
             </ProtectedRoute>
           } />
 

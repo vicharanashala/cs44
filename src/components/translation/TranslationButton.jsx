@@ -18,18 +18,20 @@ export default function TranslationButton({
   const [popupStyle, setPopupStyle] = useState({ top: 0, left: 0, width: 0 })
   const triggerRef = useRef(null)
   const popupRef = useRef(null)
-  const portalNodeRef = useRef(null)
+  const [portalNode, setPortalNode] = useState(null)
   const languages = getSupportedLanguages()
 
   useEffect(() => {
-    portalNodeRef.current = document.createElement('div')
-    portalNodeRef.current.setAttribute('data-translation-dropdown-portal', 'true')
-    document.body.appendChild(portalNodeRef.current)
+    const node = document.createElement('div')
+    node.setAttribute('data-translation-dropdown-portal', 'true')
+    document.body.appendChild(node)
+    const timer = setTimeout(() => {
+      setPortalNode(node)
+    }, 0)
 
     return () => {
-      if (portalNodeRef.current) {
-        document.body.removeChild(portalNodeRef.current)
-      }
+      clearTimeout(timer)
+      document.body.removeChild(node)
     }
   }, [])
 
@@ -150,9 +152,7 @@ export default function TranslationButton({
         </span>
       )}
 
-      {portalNodeRef.current && portalNodeRef.current !== null
-        ? createPortal(popup, portalNodeRef.current)
-        : popup}
+      {portalNode ? createPortal(popup, portalNode) : popup}
     </div>
   )
 }

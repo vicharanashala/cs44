@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -45,17 +45,23 @@ function SidebarSection({ title, icon: Icon, children }) {
   );
 }
 
+function SidebarLocalSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-4 bg-slate-200 dark:bg-slate-700/50 rounded-lg w-full" />
+      ))}
+    </div>
+  );
+}
+
 export default function Sidebar() {
   const [topContributors, setTopContributors] = useState([]);
   const [trendingQuestions, setTrendingQuestions] = useState([]);
   const [mostSearched, setMostSearched] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSidebarData();
-  }, []);
-
-  async function fetchSidebarData() {
+  const fetchSidebarData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -119,15 +125,14 @@ export default function Sidebar() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  const Skeleton = () => (
-    <div className="animate-pulse space-y-3">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="h-4 bg-slate-200 dark:bg-slate-700/50 rounded-lg w-full" />
-      ))}
-    </div>
-  );
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchSidebarData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchSidebarData]);
 
   return (
     <aside className="hidden lg:block w-80 shrink-0 select-none">
@@ -135,7 +140,7 @@ export default function Sidebar() {
         {/* FAQ Quick Summary */}
         <SidebarSection title="FAQ Quick Summary" icon={BookOpen}>
           {loading ? (
-            <Skeleton />
+            <SidebarLocalSkeleton />
           ) : (
             <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-2">
               {faqItems.map((item) => (
@@ -161,7 +166,7 @@ export default function Sidebar() {
         {/* Top Contributors */}
         <SidebarSection title="Top Contributors" icon={Award}>
           {loading ? (
-            <Skeleton />
+            <SidebarLocalSkeleton />
           ) : topContributors.length === 0 ? (
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">No contributors yet.</p>
           ) : (
@@ -211,7 +216,7 @@ export default function Sidebar() {
         {/* Trending Questions */}
         <SidebarSection title="Trending Questions" icon={TrendingUp}>
           {loading ? (
-            <Skeleton />
+            <SidebarLocalSkeleton />
           ) : trendingQuestions.length === 0 ? (
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">No trending questions yet.</p>
           ) : (
@@ -242,7 +247,7 @@ export default function Sidebar() {
         {/* Most Searched */}
         <SidebarSection title="Most Searched" icon={Search}>
           {loading ? (
-            <Skeleton />
+            <SidebarLocalSkeleton />
           ) : mostSearched.length === 0 ? (
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">No search data yet.</p>
           ) : (

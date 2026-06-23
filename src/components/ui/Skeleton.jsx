@@ -113,7 +113,7 @@ function SidebarSkeleton() {
             <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700/60 animate-pulse" />
             <div
               className="h-4 rounded-md bg-slate-200 dark:bg-slate-700/60 animate-pulse"
-              style={{ width: `${60 + Math.random() * 40}%` }}
+              style={{ width: `${60 + (i * 7) % 35}%` }}
             />
           </div>
         ))}

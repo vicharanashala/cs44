@@ -4,7 +4,7 @@ import { QuestionCardSkeleton } from '@/components/ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import { HelpCircle } from 'lucide-react'
 
-export default function QuestionFeed({ questions, loading }) {
+export default function QuestionFeed({ questions, loading, onFlag }) {
   if (loading) {
     return (
       <div className="space-y-4">
@@ -49,7 +49,7 @@ export default function QuestionFeed({ questions, loading }) {
           }}
           transition={{ duration: 0.3 }}
         >
-          <QuestionCard question={question} />
+          <QuestionCard question={question} onFlag={onFlag} />
         </motion.div>
       ))}
     </motion.div>

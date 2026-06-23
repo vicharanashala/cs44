@@ -14,8 +14,6 @@ export function useTranslation({ contentId, content, autoTargetLanguage = 'en', 
 
   const supportedLanguages = getSupportedLanguages()
 
-  const cacheKey = `${contentId}:${currentLanguage}`
-
   const resetTranslation = useCallback(() => {
     setDisplayText(originalText)
     setCurrentLanguage(originalLanguage)
@@ -80,19 +78,27 @@ export function useTranslation({ contentId, content, autoTargetLanguage = 'en', 
     [contentId, originalLanguage, originalText, resetTranslation]
   )
 
-  useEffect(() => {
+  const [prevOriginalText, setPrevOriginalText] = useState(originalText)
+  const [prevOriginalLanguage, setPrevOriginalLanguage] = useState(originalLanguage)
+
+  if (originalText !== prevOriginalText || originalLanguage !== prevOriginalLanguage) {
+    setPrevOriginalText(originalText)
+    setPrevOriginalLanguage(originalLanguage)
     setDisplayText(originalText)
     setCurrentLanguage(originalLanguage)
     setStatus('idle')
     setError(null)
-  }, [originalLanguage, originalText])
+  }
 
   useEffect(() => {
     if (!autoTranslate || !autoTargetLanguage || autoTargetLanguage === originalLanguage) {
       return
     }
 
-    translate(autoTargetLanguage)
+    const timer = setTimeout(() => {
+      translate(autoTargetLanguage)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [autoTargetLanguage, autoTranslate, originalLanguage, translate])
 
   return {
