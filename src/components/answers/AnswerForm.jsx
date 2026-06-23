@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
 import { Send, Paperclip, X, AlertCircle, Clock, LogIn } from 'lucide-react'
@@ -8,15 +8,32 @@ import { useFileUpload } from '@/hooks/useFileUpload'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/components/ui/Toast'
 import { Link } from 'react-router-dom'
-
+import { detectSpam } from '@/lib/spamDetector'
+import SpamFeedback from '@/components/ui/SpamFeedback'
 export default function AnswerForm({ questionId, onSubmitted }) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm()
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm()
   const { submitAnswer, loading } = useAnswers()
   const { uploadFile, uploading, ALLOWED_EXTENSIONS } = useFileUpload()
   const { user } = useAuth()
   const { showToast } = useToast()
   const [file, setFile] = useState(null)
-
+  const [spamResult, setSpamResult] = useState(null)
+  const content = watch('content') || ''
+  useEffect(() => {
+    if (!content) {
+      setSpamResult(null)
+      return
+    }
+    let localConfig = null
+    try {
+      const saved = localStorage.getItem('spam_config')
+      if (saved) localConfig = JSON.parse(saved)
+    } catch (e) {
+      console.error(e)
+    }
+    const result = detectSpam(content, localConfig)
+    setSpamResult(result)
+  }, [content])
   if (!user) {
     return (
       <motion.div
@@ -36,7 +53,6 @@ export default function AnswerForm({ questionId, onSubmitted }) {
       </motion.div>
     )
   }
-
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
     if (selectedFile) {
@@ -52,22 +68,18 @@ export default function AnswerForm({ questionId, onSubmitted }) {
       setFile(selectedFile)
     }
   }
-
   const onSubmit = async (data) => {
     try {
       let attachmentUrl = null
       if (file) {
         attachmentUrl = await uploadFile(file)
       }
-
       const result = await submitAnswer(questionId, data.content, attachmentUrl)
-
-      if (result.isSpam) {
-        showToast('Your answer was flagged for review due to spam detection.', 'warning')
+      if (result.status === 'verified') {
+        showToast('Answer submitted successfully!', 'success')
       } else {
-        showToast('Answer submitted! It will be visible after admin verification.', 'success')
+        showToast('Your answer was flagged for review due to spam detection.', 'warning')
       }
-
       reset()
       setFile(null)
       onSubmitted?.()
@@ -75,7 +87,6 @@ export default function AnswerForm({ questionId, onSubmitted }) {
       showToast(err.message || 'Failed to submit answer', 'error')
     }
   }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -85,14 +96,12 @@ export default function AnswerForm({ questionId, onSubmitted }) {
       <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
         Your Answer
       </h3>
-
       <div className="flex items-start gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
         <Clock className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
         <p className="text-sm text-indigo-600 dark:text-indigo-400">
           Your answer will be reviewed by an admin before becoming publicly visible.
         </p>
       </div>
-
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <textarea
@@ -111,7 +120,9 @@ export default function AnswerForm({ questionId, onSubmitted }) {
             </p>
           )}
         </div>
-
+        {spamResult && spamResult.score > 0 && (
+          <SpamFeedback spamResult={spamResult} />
+        )}
         <div className="flex items-center justify-between">
           <div>
             {file ? (
@@ -139,7 +150,6 @@ export default function AnswerForm({ questionId, onSubmitted }) {
               </label>
             )}
           </div>
-
           <Button
             type="submit"
             variant="primary"
