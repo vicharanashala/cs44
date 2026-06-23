@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  User, Mail, Calendar, Shield, HelpCircle, MessageCircle, 
+  Mail, Calendar, Shield, HelpCircle, MessageCircle, 
   CheckCircle, ThumbsUp, ThumbsDown, Edit2, Trophy, Lock, 
-  Award, BookOpen, Sparkles, Flame, Check, Star, Crown, 
-  TrendingUp, Zap, Lightbulb 
+  Award, Sparkles, Check 
 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
@@ -18,7 +17,7 @@ import { useToast } from '@/components/ui/Toast'
 import { getSupportedLanguages } from '@/lib/translationService'
 import { supabase } from '@/config/supabase'
 import { Link } from 'react-router-dom'
-import { badgeIcons } from '@/components/ui/BadgeUnlockModal'
+import { badgeIcons } from '@/components/ui/badgeIcons'
 
 const tabs = [
   { id: 'questions', label: 'My Questions', icon: HelpCircle },
@@ -54,10 +53,9 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('questions')
   const [userQuestions, setUserQuestions] = useState([])
   const [userAnswers, setUserAnswers] = useState([])
-  const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [name, setName] = useState('')
-  const [preferredLanguage, setPreferredLanguage] = useState('en')
+  const [name, setName] = useState(user?.name || '')
+  const [preferredLanguage, setPreferredLanguage] = useState(user?.preferred_language || 'en')
   const [savingLanguage, setSavingLanguage] = useState(false)
   
   // Gamification states
@@ -66,20 +64,16 @@ export default function ProfilePage() {
   const [badges, setBadges] = useState([])
   const [earnedBadgeIds, setEarnedBadgeIds] = useState(new Set())
   const [reputationLogs, setReputationLogs] = useState([])
-  const [nextBadge, setNextBadge] = useState(null)
 
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '')
-      setPreferredLanguage(user.preferred_language || 'en')
-      loadData()
-      loadGamificationData()
-    }
-  }, [user])
+  const [prevUser, setPrevUser] = useState(user)
+  if (user !== prevUser) {
+    setPrevUser(user)
+    setName(user?.name || '')
+    setPreferredLanguage(user?.preferred_language || 'en')
+  }
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return
-    setLoading(true)
     try {
       const [questions, answers] = await Promise.all([
         fetchUserQuestions(user.id),
@@ -89,12 +83,10 @@ export default function ProfilePage() {
       setUserAnswers(answers || [])
     } catch (err) {
       console.error(err)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [user, fetchUserQuestions, fetchUserAnswers])
 
-  const loadGamificationData = async () => {
+  const loadGamificationData = useCallback(async () => {
     if (!user) return
     try {
       // 1. Calculate Global Rank: count of users with strictly greater reputation + 1
@@ -138,11 +130,21 @@ export default function ProfilePage() {
     } catch (err) {
       console.error('Gamification loading error:', err)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      const timer = setTimeout(() => {
+        loadData()
+        loadGamificationData()
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [user, loadData, loadGamificationData])
 
   // Calculate Next Achievable Badge progress
-  useEffect(() => {
-    if (badges.length === 0 || !user) return
+  const nextBadge = useMemo(() => {
+    if (badges.length === 0 || !user) return null
 
     const userRep = user.reputation_points || 0
     const qCount = userQuestions.length
@@ -155,9 +157,9 @@ export default function ProfilePage() {
     const lockedProgress = badges
       .filter(b => !earnedBadgeIds.has(b.id))
       .map(b => {
-        let current = 0
-        let target = 100
-        let unit = ''
+        let current
+        let target
+        let unit
         
         switch (b.id) {
           // Beginner Contributor
@@ -211,11 +213,7 @@ export default function ProfilePage() {
       })
       .sort((a, b) => b.percentage - a.percentage) // Sort by closest completion
 
-    if (lockedProgress.length > 0) {
-      setNextBadge(lockedProgress[0])
-    } else {
-      setNextBadge(null) // Unlocked all badges!
-    }
+    return lockedProgress.length > 0 ? lockedProgress[0] : null
   }, [badges, earnedBadgeIds, user, userQuestions, userAnswers])
 
   const handleUpdateProfile = async () => {
@@ -223,7 +221,7 @@ export default function ProfilePage() {
       await updateProfile({ name })
       setEditing(false)
       showToast('Profile updated!', 'success')
-    } catch (err) {
+    } catch {
       showToast('Failed to update profile', 'error')
     }
   }
@@ -234,7 +232,7 @@ export default function ProfilePage() {
     try {
       await updateProfile({ preferred_language: preferredLanguage })
       showToast('Preferred language saved!', 'success')
-    } catch (err) {
+    } catch {
       showToast('Failed to save preferred language', 'error')
     } finally {
       setSavingLanguage(false)
@@ -243,7 +241,6 @@ export default function ProfilePage() {
 
   if (!user) return null
 
-  const verifiedAnswerCount = userAnswers.filter(a => a.verification_status === 'verified').length
   const acceptedAnswerCount = userAnswers.filter(a => a.is_accepted).length
   const totalUpvotesReceived = userQuestions.reduce((sum, q) => sum + (q.upvotes || 0), 0) +
                                userAnswers.reduce((sum, a) => sum + (a.upvotes || 0), 0)
@@ -293,9 +290,6 @@ export default function ProfilePage() {
                     </button>
                   </h1>
                 )}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5" />
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2 text-sm text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1.5">
                     <Mail className="w-4 h-4" />
@@ -333,8 +327,6 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                 </div>
-                <Badge variant={user.role === 'admin' ? 'info' : 'default'} className="mt-2">
-                  <Shield className="w-3 h-3 mr-1" />
                 <Badge variant={user.role === 'admin' ? 'info' : 'default'} className="mt-3.5">
                   <Shield className="w-3.5 h-3.5 mr-1.5" />
                   {user.role}

@@ -1,15 +1,6 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '@/config/supabase'
 
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/jpg',
-  'application/zip',
-  'application/x-zip-compressed',
-]
-
 const ALLOWED_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'zip']
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
 

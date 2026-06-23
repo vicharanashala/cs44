@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Tooltip({ content, children, position = 'top' }) {
   const [show, setShow] = useState(false)
-  let timeout
+  const timeoutRef = useRef(null)
 
   const handleMouseEnter = () => {
-    timeout = setTimeout(() => setShow(true), 300)
+    timeoutRef.current = setTimeout(() => setShow(true), 300)
   }
 
   const handleMouseLeave = () => {
-    clearTimeout(timeout)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
     setShow(false)
   }
 

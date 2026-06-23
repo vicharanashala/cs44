@@ -12,19 +12,25 @@ export default function SearchPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { results, loading, searchQuestions, trendingSearches, fetchTrendingSearches } = useSearch()
-  const [query, setQuery] = useState(searchParams.get('q') || '')
+  
+  const qParam = searchParams.get('q') || ''
+  const [prevQueryParam, setPrevQueryParam] = useState(qParam)
+  const [query, setQuery] = useState(qParam)
+
+  if (qParam !== prevQueryParam) {
+    setPrevQueryParam(qParam)
+    setQuery(qParam)
+  }
 
   useEffect(() => {
     fetchTrendingSearches()
   }, [fetchTrendingSearches])
 
   useEffect(() => {
-    const q = searchParams.get('q')
-    if (q) {
-      setQuery(q)
-      searchQuestions(q)
+    if (query) {
+      searchQuestions(query)
     }
-  }, [searchParams, searchQuestions])
+  }, [query, searchQuestions])
 
   const handleSearch = (q) => {
     setQuery(q)

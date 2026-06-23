@@ -131,4 +131,3 @@ export default function SearchBar({ onSearch, variant = 'navbar' }) {
     </form>
   )
 }
-}

@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { 
-  Trophy, Award, HelpCircle, MessageCircle, Calendar, Clock, 
-  ArrowUp, ArrowDown, ChevronRight, User, Shield, Sparkles,
-  Crown
+  Trophy, Award, ArrowUp, ArrowDown, Crown
 } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Avatar from '@/components/ui/Avatar'
-import Button from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/config/supabase'
 
@@ -17,11 +14,7 @@ export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    fetchLeaderboard()
-  }, [timeframe])
-
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     setLoading(true)
     try {
       const { data, error } = await supabase.rpc('get_leaderboard', {
@@ -35,7 +28,14 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeframe])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchLeaderboard()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [fetchLeaderboard])
 
   // Slice podium winners (Top 3)
   const podiumUsers = leaderboard.slice(0, 3)
@@ -45,8 +45,7 @@ export default function LeaderboardPage() {
   if (podiumUsers[0]) podiumLayout.push({ ...podiumUsers[0], position: 1 })
   if (podiumUsers[2]) podiumLayout.push({ ...podiumUsers[2], position: 3 })
 
-  // Remaining users (4th onwards)
-  const listUsers = leaderboard.slice(3)
+
 
   // Current user stats in leaderboard
   const currentUserEntry = leaderboard.find(x => x.user_id === user?.id)

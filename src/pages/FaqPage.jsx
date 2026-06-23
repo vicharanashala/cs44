@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BookOpen,
   Briefcase,
   GraduationCap,
   FileText,
@@ -121,21 +120,29 @@ const faqCategories = [
 
 export default function FaqPage() {
   const { id } = useParams();
-  const [activeCategory, setActiveCategory] = useState(1);
+  const [activeCategory, setActiveCategory] = useState(() => {
+    if (id) {
+      const parsedId = parseInt(id, 10);
+      const exists = faqCategories.some((cat) => cat.id === parsedId);
+      if (exists) return parsedId;
+    }
+    return 1;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedIndex, setExpandedIndex] = useState(null);
 
-  // Automatically update active category if accessed via specific FAQ ID
-  useEffect(() => {
+  const [prevId, setPrevId] = useState(id);
+  if (id !== prevId) {
+    setPrevId(id);
     if (id) {
       const parsedId = parseInt(id, 10);
       const exists = faqCategories.some((cat) => cat.id === parsedId);
       if (exists) {
         setActiveCategory(parsedId);
-        setExpandedIndex(null); // Reset expansions when changing categories
+        setExpandedIndex(null);
       }
     }
-  }, [id]);
+  }
 
   const { user } = useAuth();
   const preferredLanguage = user?.preferred_language || 'en';

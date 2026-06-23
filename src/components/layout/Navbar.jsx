@@ -14,6 +14,7 @@ import {
   LogOut,
   LayoutDashboard,
   Trophy,
+  ShieldAlert,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import ThemeToggle from '@/components/ui/ThemeToggle'

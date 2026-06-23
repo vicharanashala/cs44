@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ShieldAlert, RefreshCw, Clock, CheckCircle, XCircle, AlertTriangle, 
+  ShieldAlert, RefreshCw, Clock, CheckCircle, XCircle, 
   Trash2, Eye, Inbox, Filter, MessageSquare, HelpCircle, User, Calendar, FileText
 } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { useFlags } from '@/hooks/useFlags';
 import { useToast } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
@@ -24,7 +24,7 @@ export default function ModerationQueue() {
   const [adminNotes, setAdminNotes] = useState('');
   const [viewTab, setViewTab] = useState('queue'); // 'queue' | 'analytics'
 
-  const loadFlags = async () => {
+  const loadFlags = useCallback(async () => {
     try {
       const result = await fetchFlags({ 
         status: statusFilter === 'all' ? null : statusFilter,
@@ -36,14 +36,17 @@ export default function ModerationQueue() {
         const updated = result.data.find(f => f.id === selectedFlag.id);
         setSelectedFlag(updated || null);
       }
-    } catch (err) {
+    } catch {
       showToast('Failed to load moderation queue', 'error');
     }
-  };
+  }, [fetchFlags, statusFilter, reasonFilter, selectedFlag, showToast]);
 
   useEffect(() => {
-    loadFlags();
-  }, [statusFilter, reasonFilter]);
+    const timer = setTimeout(() => {
+      loadFlags();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadFlags]);
 
   // Calculations for stats
   const stats = useMemo(() => {

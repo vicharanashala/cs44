@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+
+
+import { useState, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronUp, Eye, Clock, Paperclip, ChevronRight, Home, Tag } from 'lucide-react'
-import { ChevronUp, ChevronDown, Eye, Clock, Paperclip, ChevronRight, Home, Tag, Trash2 } from 'lucide-react'
+import { ChevronUp, ChevronDown, Eye, Clock, Paperclip, ChevronRight, Home, Tag, Trash2, MoreVertical, Flag } from 'lucide-react'
 
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
@@ -37,11 +38,6 @@ function timeAgo(dateString) {
 
 export default function QuestionDetailPage() {
   const { id } = useParams()
-  const { question, loading: qLoading, fetchQuestionById } = useQuestions()
-  const { answers, loading: aLoading, fetchAnswers, verifyAnswer, rejectAnswer, markSpam, deleteAnswer } = useAnswers()
-  const { toggleQuestionUpvote, hasUpvotedQuestion } = useUpvote()
-  const { user, isAdmin } = useAuth()
-  const { showToast } = useToast()
   const { question, loading: qLoading, fetchQuestionById, deleteQuestion } = useQuestions()
   const { answers, loading: aLoading, fetchAnswers, verifyAnswer, rejectAnswer, markSpam, deleteAnswer, acceptAnswer } = useAnswers()
   const { toggleQuestionVote, hasUpvotedQuestion, hasDownvotedQuestion } = useUpvote()
@@ -52,6 +48,8 @@ export default function QuestionDetailPage() {
   const [upvoted, setUpvoted] = useState(false)
   const [downvoted, setDownvoted] = useState(false)
   const [localScore, setLocalScore] = useState(0)
+  const [showMenu, setShowMenu] = useState(false)
+  const [reportModal, setReportModal] = useState({ open: false, type: 'question', id: null })
 
   const preferredLanguage = user?.preferred_language || 'en'
   const titleTranslation = useTranslation({
@@ -74,16 +72,24 @@ export default function QuestionDetailPage() {
     }
   }, [id, fetchQuestionById, fetchAnswers])
 
+  const [prevQuestion, setPrevQuestion] = useState(question)
+  const [prevUserId, setPrevUserId] = useState(user?.id)
+
+  if (question !== prevQuestion) {
+    setPrevQuestion(question)
+    setLocalScore((question?.upvotes || 0) - (question?.downvotes || 0))
+  }
+
+  if (user?.id !== prevUserId) {
+    setPrevUserId(user?.id)
+    setUpvoted(false)
+    setDownvoted(false)
+  }
+
   useEffect(() => {
-    if (question) {
-      setLocalScore((question.upvotes || 0) - (question.downvotes || 0))
-      if (user) {
-        hasUpvotedQuestion(question.id).then(setUpvoted)
-        hasDownvotedQuestion(question.id).then(setDownvoted)
-      } else {
-        setUpvoted(false)
-        setDownvoted(false)
-      }
+    if (question && user) {
+      hasUpvotedQuestion(question.id).then(setUpvoted)
+      hasDownvotedQuestion(question.id).then(setDownvoted)
     }
   }, [question, user, hasUpvotedQuestion, hasDownvotedQuestion])
 
@@ -150,7 +156,7 @@ export default function QuestionDetailPage() {
       await verifyAnswer(answerId)
       showToast('Answer verified!', 'success')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to verify', 'error')
     }
   }
@@ -160,7 +166,7 @@ export default function QuestionDetailPage() {
       await rejectAnswer(answerId)
       showToast('Answer rejected', 'info')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to reject', 'error')
     }
   }
@@ -170,7 +176,7 @@ export default function QuestionDetailPage() {
       await markSpam(answerId)
       showToast('Marked as spam', 'info')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to mark spam', 'error')
     }
   }
@@ -180,7 +186,7 @@ export default function QuestionDetailPage() {
       await deleteAnswer(answerId)
       showToast('Answer deleted', 'info')
       fetchAnswers(id)
-    } catch (err) {
+    } catch {
       showToast('Failed to delete', 'error')
     }
   }
@@ -191,6 +197,18 @@ export default function QuestionDetailPage() {
 
   const handleFlagClick = (flagId, type) => {
     setReportModal({ open: true, type, id: flagId })
+  }
+
+  const handleQuestionDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      try {
+        await deleteQuestion(question.id)
+        showToast('Question deleted successfully', 'success')
+        navigate('/')
+      } catch (err) {
+        showToast(err.message || 'Failed to delete question', 'error')
+      }
+    }
   }
 
   if (qLoading) {
@@ -266,7 +284,7 @@ export default function QuestionDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-4 mb-4">
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="flex-1 pr-2">
                   <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
                     {titleTranslation.displayText}
                   </h1>
@@ -279,30 +297,17 @@ export default function QuestionDetailPage() {
                     </div>
                   )}
                 </div>
-              <div className="flex-1 pr-2">
-                <h1 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white">
-                  {titleTranslation.displayText}
-                </h1>
-                {titleTranslation.isTranslated && (
-                  <div className="mt-2">
-                    <TranslationBadge
-                      originalLanguage={titleTranslation.originalLanguage}
-                      targetLanguage={titleTranslation.currentLanguage}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <TranslationButton
-                  originalLanguage={titleTranslation.originalLanguage}
-                  currentLanguage={titleTranslation.currentLanguage}
-                  isTranslated={titleTranslation.isTranslated}
-                  status={titleTranslation.status}
-                  error={titleTranslation.error}
-                  onTranslate={titleTranslation.translate}
-                  onReset={titleTranslation.resetTranslation}
-                />
-              </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <TranslationButton
+                    originalLanguage={titleTranslation.originalLanguage}
+                    currentLanguage={titleTranslation.currentLanguage}
+                    isTranslated={titleTranslation.isTranslated}
+                    status={titleTranslation.status}
+                    error={titleTranslation.error}
+                    onTranslate={titleTranslation.translate}
+                    onReset={titleTranslation.resetTranslation}
+                  />
+                </div>
 
                 {/* Option Menu (Report Question) */}
                 {user && question.user_id !== user.id && (
@@ -335,7 +340,7 @@ export default function QuestionDetailPage() {
                               setShowMenu(false);
                               handleFlagClick(question.id, 'question');
                             }}
-                            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 cursor-pointer transition-colors"
+                            className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-650 dark:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 cursor-pointer transition-colors"
                           >
                             <Flag className="w-3.5 h-3.5" />
                             Report Question
@@ -347,33 +352,31 @@ export default function QuestionDetailPage() {
                 )}
               </div>
             </div>
-            </div>
 
-              <div className="prose prose-slate dark:prose-invert max-w-none">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                      {descriptionTranslation.displayText}
-                    </p>
-                    {descriptionTranslation.isTranslated && (
-                      <div className="mt-2">
-                        <TranslationBadge
-                          originalLanguage={descriptionTranslation.originalLanguage}
-                          targetLanguage={descriptionTranslation.currentLanguage}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <TranslationButton
-                    originalLanguage={descriptionTranslation.originalLanguage}
-                    currentLanguage={descriptionTranslation.currentLanguage}
-                    isTranslated={descriptionTranslation.isTranslated}
-                    status={descriptionTranslation.status}
-                    error={descriptionTranslation.error}
-                    onTranslate={descriptionTranslation.translate}
-                    onReset={descriptionTranslation.resetTranslation}
-                  />
+            <div className="prose prose-slate dark:prose-invert max-w-none">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    {descriptionTranslation.displayText}
+                  </p>
+                  {descriptionTranslation.isTranslated && (
+                    <div className="mt-2">
+                      <TranslationBadge
+                        originalLanguage={descriptionTranslation.originalLanguage}
+                        targetLanguage={descriptionTranslation.currentLanguage}
+                      />
+                    </div>
+                  )}
                 </div>
+                <TranslationButton
+                  originalLanguage={descriptionTranslation.originalLanguage}
+                  currentLanguage={descriptionTranslation.currentLanguage}
+                  isTranslated={descriptionTranslation.isTranslated}
+                  status={descriptionTranslation.status}
+                  error={descriptionTranslation.error}
+                  onTranslate={descriptionTranslation.translate}
+                  onReset={descriptionTranslation.resetTranslation}
+                />
               </div>
             </div>
 

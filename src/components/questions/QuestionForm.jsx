@@ -3,13 +3,12 @@ import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
 import { Send, Paperclip, X, AlertCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
 import { useCategories } from '@/hooks/useCategories'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { useToast } from '@/components/ui/Toast'
 
 export default function QuestionForm({ onSubmit, loading: submitLoading }) {
-  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm()
+  const { register, handleSubmit, formState: { errors }, reset } = useForm()
   const { categories, fetchCategories } = useCategories()
   const { uploadFile, uploading, ALLOWED_EXTENSIONS } = useFileUpload()
   const { showToast } = useToast()

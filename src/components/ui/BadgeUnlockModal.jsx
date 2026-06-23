@@ -1,17 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Award, HelpCircle, MessageCircle, BookOpen, CheckCircle, 
-  ThumbsUp, Sparkles, Flame, Check, Shield, Trophy, 
-  Star, Crown, TrendingUp, Zap, Lightbulb, X 
-} from 'lucide-react'
+import { Award, X } from 'lucide-react'
+import { badgeIcons } from './badgeIcons'
 
-// Resolve Lucide icons by name
-export const badgeIcons = {
-  Award, HelpCircle, MessageCircle, BookOpen, CheckCircle, 
-  ThumbsUp, Sparkles, Flame, Check, Shield, Trophy, 
-  Star, Crown, TrendingUp, Zap, Lightbulb
-}
 
 // Styling details for different badge tiers
 const typeConfig = {
@@ -59,6 +50,15 @@ const typeConfig = {
 
 export default function BadgeUnlockModal() {
   const [badge, setBadge] = useState(null)
+
+  const particles = useMemo(() => {
+    return Array.from({ length: 6 }, (_, i) => ({
+      y: [0, -20 - (i * 17) % 41],
+      x: [0, -30 + (i * 23) % 61],
+      duration: 1.5 + (i * 0.4) % 1.6,
+      delay: i * 0.2
+    }))
+  }, [])
   
   useEffect(() => {
     function handleBadgeUnlock(e) {
@@ -132,19 +132,19 @@ export default function BadgeUnlockModal() {
               </div>
 
               {/* Tiny floating particle elements */}
-              {[...Array(6)].map((_, i) => (
+              {particles.map((p, i) => (
                 <motion.div
                   key={i}
                   animate={{
-                    y: [0, Math.random() * -60 - 20],
-                    x: [0, Math.random() * 60 - 30],
+                    y: p.y,
+                    x: p.x,
                     opacity: [0, 0.8, 0],
                     scale: [0.5, 1.2, 0.5]
                   }}
                   transition={{
-                    duration: Math.random() * 2 + 1.5,
+                    duration: p.duration,
                     repeat: Infinity,
-                    delay: i * 0.2
+                    delay: p.delay
                   }}
                   className={`absolute w-1.5 h-1.5 rounded-full ${i % 2 === 0 ? 'bg-indigo-400' : 'bg-purple-400'} pointer-events-none`}
                   style={{ top: '40%' }}

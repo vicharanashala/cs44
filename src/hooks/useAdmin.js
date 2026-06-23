@@ -11,6 +11,7 @@ export function useAdmin() {
     totalQuestions: 0,
   })
   const [allAnswers, setAllAnswers] = useState([])
+  const [allQuestions, setAllQuestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { isAdmin } = useAuth()
@@ -60,6 +61,31 @@ export function useAdmin() {
       if (fetchError) throw fetchError
 
       setAllAnswers(data || [])
+      return data || []
+    } catch (err) {
+      setError(err.message)
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }, [isAdmin])
+
+  const fetchAllQuestions = useCallback(async () => {
+    if (!isAdmin) return
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('questions')
+        .select(`
+          *,
+          users:user_id (id, name, email, avatar)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+
+      setAllQuestions(data || [])
       return data || []
     } catch (err) {
       setError(err.message)
@@ -330,10 +356,12 @@ export function useAdmin() {
   return {
     metrics,
     allAnswers,
+    allQuestions,
     loading,
     error,
     fetchMetrics,
     fetchAllAnswers,
+    fetchAllQuestions,
     bulkVerify,
     bulkDelete,
     bulkMarkSpam,

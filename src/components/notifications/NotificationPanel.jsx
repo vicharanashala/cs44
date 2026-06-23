@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Check, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
 
 function timeAgo(dateString) {
@@ -17,7 +17,7 @@ function timeAgo(dateString) {
 }
 
 export default function NotificationPanel({ isOpen, onClose }) {
-  const { notifications, markAsRead, markAllAsRead, loading } = useNotifications()
+  const { notifications, markAsRead, markAllAsRead } = useNotifications()
   const panelRef = useRef(null)
 
   useEffect(() => {

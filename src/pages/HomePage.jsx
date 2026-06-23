@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, TrendingUp, Clock, ThumbsUp, Eye } from 'lucide-react'
+import { TrendingUp, Clock, ThumbsUp, Eye } from 'lucide-react'
 import QuestionFeed from '@/components/questions/QuestionFeed'
 import CategoryPills from '@/components/questions/CategoryPills'
 import Sidebar from '@/components/layout/Sidebar'

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { CheckCircle, XCircle, Shield, Trash2, Flag, Clock, Paperclip } from 'lucide-react'
+import { CheckCircle, XCircle, Shield, Trash2, Clock, Paperclip } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
 import { QuestionCardSkeleton } from '@/components/ui/Skeleton'

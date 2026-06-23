@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../config/supabase'
 
@@ -225,7 +226,7 @@ export function AuthProvider({ children }) {
       }
       console.log('AnswerHub Auth: Unsubscribed from auth events.')
     }
-  }, [fetchUserProfile])
+  }, [fetchUserProfile, setCurrentUser])
 
   /**
    * Daily login and realtime subscription for gamification system.
@@ -303,7 +304,7 @@ export function AuthProvider({ children }) {
       console.log('Unsubscribing from gamification updates for user:', user.id)
       supabase.removeChannel(channel)
     }
-  }, [user?.id, fetchUserProfile, setCurrentUser])
+  }, [user, fetchUserProfile, setCurrentUser])
 
   /**
    * Sign up with email and password.

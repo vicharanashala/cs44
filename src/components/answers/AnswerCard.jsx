@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronUp, ChevronDown, Clock, CheckCircle, XCircle, AlertTriangle, Shield, Trash2, Flag, MessageSquare, Sparkles, Check } from 'lucide-react'
+import { ChevronUp, ChevronDown, Clock, CheckCircle, XCircle, AlertTriangle, Shield, Trash2, Flag, Sparkles, MoreVertical } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
-import Button from '@/components/ui/Button'
+
 import FilePreview from '@/components/ui/FilePreview'
 import { useUpvote } from '@/hooks/useUpvote'
 import { useAuth } from '@/hooks/useAuth'
@@ -107,13 +108,17 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
   
   const [upvoted, setUpvoted] = useState(false)
   const [downvoted, setDownvoted] = useState(false)
+  const [prevUpvotes, setPrevUpvotes] = useState(answer.upvotes)
+  const [prevDownvotes, setPrevDownvotes] = useState(answer.downvotes)
   const [localScore, setLocalScore] = useState((answer.upvotes || 0) - (answer.downvotes || 0))
   const [showAiSummary, setShowAiSummary] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
 
-  useEffect(() => {
+  if (answer.upvotes !== prevUpvotes || answer.downvotes !== prevDownvotes) {
+    setPrevUpvotes(answer.upvotes)
+    setPrevDownvotes(answer.downvotes)
     setLocalScore((answer.upvotes || 0) - (answer.downvotes || 0))
-  }, [answer.upvotes, answer.downvotes])
+  }
 
   const preferredLanguage = user?.preferred_language || 'en'
   const answerTranslation = useTranslation({
@@ -123,13 +128,17 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
     autoTranslate: Boolean(user?.preferred_language),
   })
 
+  const [prevUserId, setPrevUserId] = useState(user?.id)
+  if (user?.id !== prevUserId) {
+    setPrevUserId(user?.id)
+    setUpvoted(false)
+    setDownvoted(false)
+  }
+
   useEffect(() => {
     if (user) {
       hasUpvotedAnswer(answer.id).then(setUpvoted)
       hasDownvotedAnswer(answer.id).then(setDownvoted)
-    } else {
-      setUpvoted(false)
-      setDownvoted(false)
     }
   }, [answer.id, user, hasUpvotedAnswer, hasDownvotedAnswer])
 
@@ -261,12 +270,10 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
           />
         </div>
 
-        <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-300 leading-relaxed">
-          <p className="whitespace-pre-wrap">{answerTranslation.displayText}</p>
         <div className="flex justify-between items-start">
           <div className="flex-1 min-w-0">
             <div className="prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-300 leading-relaxed">
-              <p className="whitespace-pre-wrap">{answer.content}</p>
+              <p className="whitespace-pre-wrap">{answerTranslation.displayText}</p>
             </div>
           </div>
 
@@ -279,7 +286,7 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
                   e.stopPropagation();
                   setShowMenu(!showMenu);
                 }}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-655 dark:hover:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-750 cursor-pointer transition-colors"
                 aria-label="Options"
               >
                 <MoreVertical className="w-4 h-4" />
@@ -301,7 +308,7 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
                         setShowMenu(false);
                         onFlag?.(answer.id);
                       }}
-                      className="w-full text-left px-4 py-2 text-xs font-semibold text-red-650 dark:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 cursor-pointer transition-colors"
+                      className="w-full text-left px-4 py-2 text-xs font-semibold text-red-655 dark:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 cursor-pointer transition-colors"
                     >
                       <Flag className="w-3.5 h-3.5" />
                       Report Answer
