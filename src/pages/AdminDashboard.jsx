@@ -239,7 +239,7 @@ export default function AdminDashboard() {
       console.error(err)
       showToast(`Failed to ${adminNoteModal.action}`, 'error')
     }
-  }
+  },
 
   const handleSpam = async (answerId) => {
     try {
