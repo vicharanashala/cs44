@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronUp, ChevronDown, Eye, Clock, Paperclip, ChevronRight, Home, Tag, Trash2, MoreVertical, Flag } from 'lucide-react'
+import { ChevronUp, ChevronDown, Eye, Clock, Paperclip, ChevronRight, Home, Tag, Trash2, MoreVertical, Flag, Volume2, StopCircle } from 'lucide-react'
 
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
@@ -21,6 +21,7 @@ import { useTranslation } from '@/hooks/useTranslation'
 import TranslationButton from '@/components/translation/TranslationButton'
 import TranslationBadge from '@/components/translation/TranslationBadge'
 import ReportModal from '@/components/ui/ReportModal'
+import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 
 function timeAgo(dateString) {
   const now = new Date()
@@ -44,6 +45,7 @@ export default function QuestionDetailPage() {
   const { user, isAdmin } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const { supported: ttsSupported, speakingId, speak, stop: stopSpeak } = useTextToSpeech()
   
   const [upvoted, setUpvoted] = useState(false)
   const [downvoted, setDownvoted] = useState(false)
@@ -307,6 +309,31 @@ export default function QuestionDetailPage() {
                     onTranslate={titleTranslation.translate}
                     onReset={titleTranslation.resetTranslation}
                   />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!ttsSupported) return;
+                      const speechId = `question-detail-${question.id}`;
+                      if (speakingId === speechId) {
+                        stopSpeak();
+                        return;
+                      }
+                      const textToSpeak = `${titleTranslation.displayText}. ${descriptionTranslation.displayText || ''}`;
+                      speak(textToSpeak, speechId, titleTranslation.currentLanguage || 'en-US');
+                    }}
+                    disabled={!ttsSupported}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      ttsSupported
+                        ? speakingId === `question-detail-${question.id}`
+                          ? 'text-indigo-650 dark:text-indigo-405 bg-indigo-500/10'
+                          : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                    }`}
+                    aria-label={speakingId === `question-detail-${question.id}` ? 'Stop readout' : 'Read question'}
+                    title={ttsSupported ? (speakingId === `question-detail-${question.id}` ? 'Stop readout' : 'Read question') : 'Readout not supported'}
+                  >
+                    {speakingId === `question-detail-${question.id}` ? <StopCircle className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 {/* Option Menu (Report Question) */}

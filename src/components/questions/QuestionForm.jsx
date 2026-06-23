@@ -1,22 +1,76 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
-import { Send, Paperclip, X, AlertCircle } from 'lucide-react'
+import { Send, Paperclip, X, AlertCircle, Mic, Volume2, Square, StopCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { useCategories } from '@/hooks/useCategories'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import { useToast } from '@/components/ui/Toast'
+import { useSpeechToText } from '@/hooks/useSpeechToText'
+import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 
 export default function QuestionForm({ onSubmit, loading: submitLoading }) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm()
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm()
   const { categories, fetchCategories } = useCategories()
   const { uploadFile, uploading, ALLOWED_EXTENSIONS } = useFileUpload()
   const { showToast } = useToast()
   const [file, setFile] = useState(null)
   const [tagsInput, setTagsInput] = useState('')
 
+  const titleValue = watch('title') || ''
+  const descriptionValue = watch('description') || ''
+
+  const [activeField, setActiveField] = useState(null)
+  const activeFieldRef = useRef(null)
+
+  const { supported: sttSupported, listening, start: startStt, stop: stopStt } = useSpeechToText({
+    onResult: (text) => {
+      if (!activeFieldRef.current) return
+      setValue(activeFieldRef.current, text, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    }
+  })
+
+  const { supported: ttsSupported, speakingId, speak, stop: stopTts } = useTextToSpeech()
+
+  const toggleDictation = (field) => {
+    if (!sttSupported) return
+    if (listening && activeField === field) {
+      stopStt()
+      setActiveField(null)
+      activeFieldRef.current = null
+      return
+    }
+    stopStt()
+    stopTts()
+    setActiveField(field)
+    activeFieldRef.current = field
+    startStt()
+  }
+
+  const toggleReadout = (field) => {
+    if (!ttsSupported) return
+    const value = field === 'title' ? titleValue : descriptionValue
+    if (!value) return
+    if (speakingId === field) {
+      stopTts()
+      return
+    }
+    stopStt()
+    speak(value, field)
+  }
+
+  const isDictating = (field) => listening && activeField === field
+  const isSpeaking = (field) => speakingId === field
+
   useEffect(() => {
     fetchCategories()
+    return () => {
+      stopStt()
+      stopTts()
+    }
   }, [fetchCategories])
 
   const handleFileChange = (e) => {
@@ -72,9 +126,52 @@ export default function QuestionForm({ onSubmit, loading: submitLoading }) {
       transition={{ duration: 0.4 }}
     >
       <div>
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-          Question Title *
-        </label>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            Question Title *
+          </label>
+          <div className="flex items-center gap-2">
+            {isDictating('title') && (
+              <span className="text-xs text-red-500 animate-pulse whitespace-nowrap">
+                🎙 Listening
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => toggleReadout('title')}
+              disabled={!ttsSupported || !titleValue}
+              className={`inline-flex items-center gap-1 text-xs font-semibold transition-colors ${
+                ttsSupported && titleValue
+                  ? isSpeaking('title')
+                    ? 'text-indigo-650 bg-indigo-500/10 px-1.5 py-0.5 rounded'
+                    : 'text-indigo-500 hover:text-indigo-600'
+                  : 'text-slate-400 cursor-not-allowed'
+              }`}
+              aria-label={isSpeaking('title') ? 'Stop readout' : 'Read title'}
+              title={ttsSupported ? (isSpeaking('title') ? 'Stop readout' : 'Read title') : 'Readout not supported'}
+            >
+              {isSpeaking('title') ? <StopCircle className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {isSpeaking('title') ? 'Stop' : 'Read'}
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleDictation('title')}
+              disabled={!sttSupported}
+              className={`inline-flex items-center gap-1 text-xs font-semibold transition-colors ${
+                sttSupported
+                  ? isDictating('title')
+                    ? 'text-red-650 bg-red-500/10 px-1.5 py-0.5 rounded'
+                    : 'text-indigo-500 hover:text-indigo-600'
+                  : 'text-slate-400 cursor-not-allowed'
+              }`}
+              aria-label={isDictating('title') ? 'Stop voice typing' : 'Start voice typing'}
+              title={sttSupported ? (isDictating('title') ? 'Stop voice typing' : 'Start voice typing') : 'Voice typing not supported'}
+            >
+              {isDictating('title') ? <Square className="w-3.5 h-3.5 text-red-555" /> : <Mic className="w-3.5 h-3.5" />}
+              {isDictating('title') ? 'Stop' : 'Voice'}
+            </button>
+          </div>
+        </div>
         <input
           {...register('title', {
             required: 'Title is required',
@@ -92,9 +189,52 @@ export default function QuestionForm({ onSubmit, loading: submitLoading }) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-          Description *
-        </label>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+            Description *
+          </label>
+          <div className="flex items-center gap-2">
+            {isDictating('description') && (
+              <span className="text-xs text-red-500 animate-pulse whitespace-nowrap">
+                🎙 Listening
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => toggleReadout('description')}
+              disabled={!ttsSupported || !descriptionValue}
+              className={`inline-flex items-center gap-1 text-xs font-semibold transition-colors ${
+                ttsSupported && descriptionValue
+                  ? isSpeaking('description')
+                    ? 'text-indigo-650 bg-indigo-500/10 px-1.5 py-0.5 rounded'
+                    : 'text-indigo-500 hover:text-indigo-600'
+                  : 'text-slate-400 cursor-not-allowed'
+              }`}
+              aria-label={isSpeaking('description') ? 'Stop readout' : 'Read description'}
+              title={ttsSupported ? (isSpeaking('description') ? 'Stop readout' : 'Read description') : 'Readout not supported'}
+            >
+              {isSpeaking('description') ? <StopCircle className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {isSpeaking('description') ? 'Stop' : 'Read'}
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleDictation('description')}
+              disabled={!sttSupported}
+              className={`inline-flex items-center gap-1 text-xs font-semibold transition-colors ${
+                sttSupported
+                  ? isDictating('description')
+                    ? 'text-red-650 bg-red-500/10 px-1.5 py-0.5 rounded'
+                    : 'text-indigo-500 hover:text-indigo-600'
+                  : 'text-slate-400 cursor-not-allowed'
+              }`}
+              aria-label={isDictating('description') ? 'Stop voice typing' : 'Start voice typing'}
+              title={sttSupported ? (isDictating('description') ? 'Stop voice typing' : 'Start voice typing') : 'Voice typing not supported'}
+            >
+              {isDictating('description') ? <Square className="w-3.5 h-3.5 text-red-555" /> : <Mic className="w-3.5 h-3.5" />}
+              {isDictating('description') ? 'Stop' : 'Voice'}
+            </button>
+          </div>
+        </div>
         <textarea
           {...register('description', {
             required: 'Description is required',

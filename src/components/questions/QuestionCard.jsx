@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   MoreVertical,
   Flag,
+  Volume2,
+  StopCircle,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -19,6 +21,7 @@ import { useUpvote } from '@/hooks/useUpvote';
 import { useTranslation } from '@/hooks/useTranslation';
 import TranslationButton from '@/components/translation/TranslationButton';
 import TranslationBadge from '@/components/translation/TranslationBadge';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 
 function formatTimeAgo(dateStr) {
   if (!dateStr) return '';
@@ -56,6 +59,7 @@ export default function QuestionCard({ question, onFlag }) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { toggleQuestionVote, hasUpvotedQuestion, hasDownvotedQuestion } = useUpvote();
+  const { supported: ttsSupported, speakingId, speak, stop: stopSpeak } = useTextToSpeech();
 
   const preferredLanguage = user?.preferred_language || 'en';
   const titleTranslation = useTranslation({
@@ -224,6 +228,34 @@ export default function QuestionCard({ question, onFlag }) {
                 onTranslate={titleTranslation.translate}
                 onReset={titleTranslation.resetTranslation}
               />
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!ttsSupported) return;
+                  const speechId = `question-${id}`;
+                  if (speakingId === speechId) {
+                    stopSpeak();
+                    return;
+                  }
+                  const textToSpeak = `${titleTranslation.displayText}. ${descriptionTranslation.displayText || ''}`;
+                  speak(textToSpeak, speechId, titleTranslation.currentLanguage || 'en-US');
+                }}
+                disabled={!ttsSupported}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  ttsSupported
+                    ? speakingId === `question-${id}`
+                      ? 'text-indigo-650 dark:text-indigo-405 bg-indigo-500/10'
+                      : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                }`}
+                aria-label={speakingId === `question-${id}` ? 'Stop readout' : 'Read question'}
+                title={ttsSupported ? (speakingId === `question-${id}` ? 'Stop readout' : 'Read question') : 'Readout not supported'}
+              >
+                {speakingId === `question-${id}` ? <StopCircle className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
 
               {user && author.id !== user.id && (
                 <div className="relative">

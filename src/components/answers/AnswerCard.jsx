@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronUp, ChevronDown, Clock, CheckCircle, XCircle, AlertTriangle, Shield, Trash2, Flag, Sparkles, MoreVertical } from 'lucide-react'
+import { ChevronUp, ChevronDown, Clock, CheckCircle, XCircle, AlertTriangle, Shield, Trash2, Flag, Sparkles, MoreVertical, Volume2, StopCircle } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
 
@@ -12,6 +12,7 @@ import { useTranslation } from '@/hooks/useTranslation'
 import TranslationButton from '@/components/translation/TranslationButton'
 import TranslationBadge from '@/components/translation/TranslationBadge'
 import { useToast } from '@/components/ui/Toast'
+import { useTextToSpeech } from '@/hooks/useTextToSpeech'
 
 function timeAgo(dateString) {
   const now = new Date()
@@ -113,6 +114,7 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
   const [localScore, setLocalScore] = useState((answer.upvotes || 0) - (answer.downvotes || 0))
   const [showAiSummary, setShowAiSummary] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const { supported: ttsSupported, speakingId, speak, stop: stopSpeak } = useTextToSpeech()
 
   if (answer.upvotes !== prevUpvotes || answer.downvotes !== prevDownvotes) {
     setPrevUpvotes(answer.upvotes)
@@ -259,15 +261,41 @@ export default function AnswerCard({ answer, isOwner, isAdmin, isQuestionOwner, 
             originalLanguage={answerTranslation.originalLanguage}
             targetLanguage={answerTranslation.currentLanguage}
           />
-          <TranslationButton
-            originalLanguage={answerTranslation.originalLanguage}
-            currentLanguage={answerTranslation.currentLanguage}
-            isTranslated={answerTranslation.isTranslated}
-            status={answerTranslation.status}
-            error={answerTranslation.error}
-            onTranslate={answerTranslation.translate}
-            onReset={answerTranslation.resetTranslation}
-          />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <TranslationButton
+              originalLanguage={answerTranslation.originalLanguage}
+              currentLanguage={answerTranslation.currentLanguage}
+              isTranslated={answerTranslation.isTranslated}
+              status={answerTranslation.status}
+              error={answerTranslation.error}
+              onTranslate={answerTranslation.translate}
+              onReset={answerTranslation.resetTranslation}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!ttsSupported) return;
+                const speechId = `answer-${answer.id}`;
+                if (speakingId === speechId) {
+                  stopSpeak();
+                  return;
+                }
+                speak(answerTranslation.displayText, speechId, answerTranslation.currentLanguage || 'en-US');
+              }}
+              disabled={!ttsSupported}
+              className={`p-1.5 rounded-lg transition-colors ${
+                ttsSupported
+                  ? speakingId === `answer-${answer.id}`
+                    ? 'text-indigo-650 dark:text-indigo-405 bg-indigo-500/10'
+                    : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+              }`}
+              aria-label={speakingId === `answer-${answer.id}` ? 'Stop readout' : 'Read answer'}
+              title={ttsSupported ? (speakingId === `answer-${answer.id}` ? 'Stop readout' : 'Read answer') : 'Readout not supported'}
+            >
+              {speakingId === `answer-${answer.id}` ? <StopCircle className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         <div className="flex justify-between items-start">
