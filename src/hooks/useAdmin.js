@@ -152,6 +152,13 @@ export function useAdmin() {
       })
       setModerationItems(enriched)
       return enriched
+    } catch (err) {
+      setError(err.message)
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }, [isAdmin])
 
   const fetchAllQuestions = useCallback(async () => {
     if (!isAdmin) return
@@ -506,15 +513,7 @@ export function useAdmin() {
       throw err
     }
   }, [isAdmin])
-  return {
-    metrics,
-    allAnswers,
-    moderationItems,
-    auditLogs,
-    spamSettings,
-    analytics,
-
-  const adminDeleteQuestion: = useCallback(async (id) => {
+  const adminDeleteQuestion = useCallback(async (id) => {
     if (!isAdmin) throw new Error('Admin only')
     try {
       const { error: deleteError } = await supabase
