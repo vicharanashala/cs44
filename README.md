@@ -153,28 +153,6 @@ Automatic content quality filtering:
 </td>
 <td width="50%">
 
-### 📍 Track Your Questions
-Never lose sight of your submissions:
-- **Real-time status tracking** for all your questions
-- See answer count, views, upvotes, and verification status
-- Get notified when answers are posted or verified
-- Full activity history on your profile dashboard
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🔑 Authentication System
-Flexible, secure authentication:
-- **Email/Password** sign-up and login
-- **Forgot Password** — Email-based password reset flow
-- Session persistence across page refreshes
-- Automatic session recovery with watchdog timer
-
-</td>
-<td width="50%">
-
 ### 🎨 Obsidian & Paper Theme System
 Cinematic dual-theme experience:
 - **Obsidian Dark** — Deep dark mode with cosmic particle backdrops
@@ -328,58 +306,132 @@ Every registered user gets a comprehensive profile showcasing:
 ### Project Structure
 
 ```
-Answerhub/
-├── public/                        # Static assets
-├── supabase/
-│   └── schema.sql                 # Full database schema, triggers, RLS policies
-├── src/
-│   ├── components/
-│   │   ├── admin/                 # Moderation dashboard, flagging review
-│   │   ├── answers/               # Answer cards, forms, accepted answer UI
-│   │   ├── auth/                  # ProtectedRoute, GuestRoute guards
-│   │   ├── layout/                # Navbar, Sidebar, Footer, Layout shell
-│   │   ├── notifications/         # Real-time notification bell & dropdown
-│   │   ├── questions/             # QuestionCard, QuestionForm, QuestionFeed
-│   │   ├── search/                # SearchBar with voice input & type-ahead
-│   │   └── ui/                    # Design system: Button, Modal, Toast,
-│   │                              #   Card, Input, Avatar, Badge, Skeleton,
-│   │                              #   Tooltip, ThemeToggle, BackToTop
-│   ├── config/
-│   │   └── supabase.js            # Supabase client initialization
-│   ├── contexts/
-│   │   └── AuthContext.jsx        # Global auth state with session persistence
-│   ├── hooks/
-│   │   ├── useAdmin.js            # Admin moderation & flagging operations
-│   │   ├── useAnswers.js          # Answer CRUD + verification + accepted answers
-│   │   ├── useAuth.js             # Auth context consumer
-│   │   ├── useCategories.js       # Category fetching
-│   │   ├── useFileUpload.js       # Supabase Storage file uploads
-│   │   ├── useNotifications.js    # Notification state management
-│   │   ├── useQuestions.js        # Question CRUD + upvoting + deletion
-│   │   ├── useSearch.js           # Fuzzy search + type-ahead + analytics
-│   │   ├── useSpeechToText.js     # 🎙️ Web Speech API (STT) hook
-│   │   ├── useTextToSpeech.js     # 🔊 SpeechSynthesis (TTS) hook
-│   │   └── useUpvote.js           # Optimistic upvote toggling
-│   ├── lib/                       # Utility functions
-│   ├── pages/
-│   │   ├── AdminDashboard.jsx     # Metrics, bulk moderation, flag queue
-│   │   ├── AskQuestionPage.jsx    # Question form with voice dictation
-│   │   ├── FaqPage.jsx            # FAQ browser with STT & TTS
-│   │   ├── ForgotPasswordPage.jsx # Email-based password reset
-│   │   ├── HomePage.jsx           # Main feed with category filtering
-│   │   ├── LoginPage.jsx          # Email/password login
-│   │   ├── NotFoundPage.jsx       # Animated 404 page
-│   │   ├── ProfilePage.jsx        # Stats, reputation, badges
-│   │   ├── QuestionDetailPage.jsx # Full question + answers + accepted
-│   │   ├── SearchPage.jsx         # Global search results
-│   │   └── SignupPage.jsx         # User registration
-│   ├── App.jsx                    # Route definitions with AnimatePresence
-│   ├── main.jsx                   # App entry point
-│   └── index.css                  # Global styles & design tokens
+cs44-main/
+├── .env.example
+├── .gitignore
+├── eslint.config.js
 ├── index.html
+├── package-lock.json
+├── package.json
+├── PROJECT_STRUCTURE.md
+├── README.md
 ├── vite.config.js
-├── vercel.json                    # Vercel SPA routing config
-└── package.json
+├── public/
+│   ├── favicon.svg
+│   └── icons.svg
+├── supabase/
+│   ├── .gitignore
+│   ├── config.toml
+│   ├── migration.sql
+│   ├── schema.sql
+│   └── schema_flagging.sql
+└── src/
+    ├── App.jsx
+    ├── index.css
+    ├── initOrt.js
+    ├── main.jsx
+    ├── assets/
+    │   ├── hero.png
+    │   ├── react.svg
+    │   └── vite.svg
+    ├── config/
+    │   └── supabase.js
+    ├── contexts/
+    │   ├── AuthContext.jsx
+    │   ├── NotificationContext.jsx
+    │   └── ThemeContext.jsx
+    ├── hooks/
+    │   ├── useAdmin.js
+    │   ├── useAnswers.js
+    │   ├── useAuth.js
+    │   ├── useCategories.js
+    │   ├── useFileUpload.js
+    │   ├── useFlags.js
+    │   ├── useNotifications.js
+    │   ├── useQuestions.js
+    │   ├── useSearch.js
+    │   ├── useSpeechToText.js
+    │   ├── useTextToSpeech.js
+    │   ├── useTranslation.js
+    │   ├── useTypeahead.js
+    │   └── useUpvote.js
+    ├── lib/
+    │   ├── duplicateDetector.js
+    │   ├── embeddingUtils.js
+    │   ├── fuzzySearch.js
+    │   ├── searchVoiceAnswer.js
+    │   ├── spamDetector.js
+    │   ├── spamDetector.test.js
+    │   └── translationService.js
+    ├── pages/
+    │   ├── AdminDashboard.jsx
+    │   ├── AskQuestionPage.jsx
+    │   ├── FaqPage.jsx
+    │   ├── ForgotPasswordPage.jsx
+    │   ├── HomePage.jsx
+    │   ├── LeaderboardPage.jsx
+    │   ├── LoginPage.jsx
+    │   ├── ModerationQueue.jsx
+    │   ├── NotFoundPage.jsx
+    │   ├── ProfilePage.jsx
+    │   ├── QuestionDetailPage.jsx
+    │   ├── SearchPage.jsx
+    │   └── SignupPage.jsx
+    └── components/
+        ├── admin/
+        │   ├── BulkActions.jsx
+        │   ├── MetricsCards.jsx
+        │   ├── ModerationActions.jsx
+        │   └── ModerationTable.jsx
+        ├── answers/
+        │   ├── AnswerCard.jsx
+        │   ├── AnswerForm.jsx
+        │   └── AnswerList.jsx
+        ├── auth/
+        │   ├── ForgotPassword.jsx
+        │   ├── LoginForm.jsx
+        │   ├── ProtectedRoute.jsx
+        │   └── SignupForm.jsx
+        ├── layout/
+        │   ├── Footer.jsx
+        │   ├── Layout.jsx
+        │   ├── Navbar.jsx
+        │   └── Sidebar.jsx
+        ├── notifications/
+        │   ├── NotificationBell.jsx
+        │   └── NotificationPanel.jsx
+        ├── questions/
+        │   ├── CategoryPills.jsx
+        │   ├── DuplicateWarning.jsx
+        │   ├── QuestionCard.jsx
+        │   ├── QuestionFeed.jsx
+        │   └── QuestionForm.jsx
+        ├── search/
+        │   ├── SearchBar.jsx
+        │   ├── SearchResults.jsx
+        │   └── TrendingSearches.jsx
+        ├── translation/
+        │   ├── LanguageSelector.jsx
+        │   ├── TranslationBadge.jsx
+        │   └── TranslationButton.jsx
+        └── ui/
+            ├── Avatar.jsx
+            ├── BackToTop.jsx
+            ├── Badge.jsx
+            ├── BadgeUnlockModal.jsx
+            ├── badgeIcons.js
+            ├── Button.jsx
+            ├── Card.jsx
+            ├── EmptyState.jsx
+            ├── FilePreview.jsx
+            ├── Input.jsx
+            ├── Modal.jsx
+            ├── ReportModal.jsx
+            ├── Skeleton.jsx
+            ├── SpamFeedback.jsx
+            ├── ThemeToggle.jsx
+            ├── Toast.jsx
+            └── Tooltip.jsx
 ```
 
 ---
@@ -399,8 +451,7 @@ Answerhub/
 | **Search Engine** | Fuse.js | 7 | Client-side fuzzy matching & similarity scoring |
 | **Voice Input** | Web Speech API | Native | Browser speech-to-text recognition |
 | **Audio Output** | SpeechSynthesis API | Native | Browser text-to-speech playback |
-
-| **Deployment** | Vercel | — | Edge-optimized SPA hosting |
+| **AI/NLP Engine**| Transformers.js (@xenova/transformers)	|v2|Client-side AI summary generation|
 
 ---
 
@@ -504,9 +555,12 @@ The `useTextToSpeech` hook uses the native **SpeechSynthesis API** for audio con
 **1. Clone & Install**
 
 ```bash
-git clone https://github.com/sonivishal66666/Answerhub.git
-cd Answerhub
+git clone https://github.com/vicharanashala/cs44
+cd cs44-main
 npm install
+
+NOTE
+During npm install, the NLP dependency @xenova/transformers is installed. The first time a user generates an AI answer summary, the browser will automatically fetch and cache the required model (Xenova/all-MiniLM-L6-v2) locally.
 ```
 
 **2. Database Setup**
@@ -576,26 +630,6 @@ To activate the admin moderation dashboard:
 
 ---
 
-## 🌐 Deployment
-
-### Vercel (Recommended)
-
-1. Push your repository to GitHub
-2. Import the project on [Vercel](https://vercel.com)
-3. Add environment variables:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. Deploy — the included `vercel.json` handles SPA routing automatically
-
-### Manual Build
-
-```bash
-npm run build          # Outputs to ./dist
-npx serve dist         # Serve locally for testing
-```
-
----
-
 ## 🎯 Complete Feature Summary
 
 | # | Feature | Description |
@@ -612,16 +646,14 @@ npx serve dist         # Serve locally for testing
 | 10 | 🌐 Translation | Multi-language translation for questions & answers |
 | 11 | 🔍 Type-Ahead | Autocomplete search suggestions as you type |
 | 12 | 🚩 Content Flagging | Flag inappropriate questions or answers |
-| 13 | 📍 Track Your Questions | Real-time status tracking for submissions |
-| 14 | 🔑 Forgot Password | Email-based password reset flow |
-| 15 | 🧠 Duplicate Detection | Fuse.js fuzzy matching with similarity scores |
-| 16 | 🚫 Spam Detector | Heuristic auto-flagging of spam content |
-| 17 | 🔮 AI Summarizer | Client-side NLP extractive summaries |
-| 18 | 📎 File Attachments | Upload images and documents to questions/answers |
-| 19 | 🔔 Real-Time Notifications | In-app notification bell with live updates |
-| 20 | 🎨 Obsidian & Paper Themes | Cinematic dark/light theme system |
-| 21 | ✨ Spring-Physics Animations | Framer Motion transitions & micro-interactions |
-| 22 | 🌌 Cosmic Particle Backdrops | Floating particle emitter with ambient nebulas |
+| 13 | 🧠 Duplicate Detection | Fuse.js fuzzy matching with similarity scores |
+| 14 | 🚫 Spam Detector | Heuristic auto-flagging of spam content |
+| 15 | 🔮 AI Summarizer | Client-side NLP extractive summaries |
+| 16 | 📎 File Attachments | Upload images and documents to questions/answers |
+| 17 | 🔔 Real-Time Notifications | In-app notification bell with live updates |
+| 18 | 🎨 Obsidian & Paper Themes | Cinematic dark/light theme system |
+| 19 | ✨ Spring-Physics Animations | Framer Motion transitions & micro-interactions |
+| 20 | 🌌 Cosmic Particle Backdrops | Floating particle emitter with ambient nebulas |
 
 ---
 
