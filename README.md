@@ -654,100 +654,27 @@ To activate the admin moderation dashboard:
 | 18 | 🎨 Obsidian & Paper Themes | Cinematic dark/light theme system |
 | 19 | ✨ Spring-Physics Animations | Framer Motion transitions & micro-interactions |
 | 20 | 🌌 Cosmic Particle Backdrops | Floating particle emitter with ambient nebulas |
-
 ---
 
 ## 👥 Team & Contributions
 
-|
- Name of Member 
-|
- Contributions 
-|
-|
-:---
-|
-:---
-|
-|
-**
-Pinjar Ayesha Anjuma
-**
- [Team Lead] 
-|
- Team coordination, Multilingual Translation 
-|
-|
-**
-Atul Mishra
-**
-|
- Type-Ahead Autocomplete 
-|
-|
-**
-Vishal Soni
-**
-|
- Database Architect, Reputation and badge system 
-|
-|
-**
-Harsh Kumar
-**
-|
- Smart Duplicate Detection 
-|
-|
-**
-Sunnam Durga Malleshwari
-**
-|
- Heuristic Spam Detector 
-|
-|
-**
-Devendra Sagar
-**
-|
- Content Flagging 
-|
-|
-**
-Harsh Aggarwal
-**
-|
- Conceptual data modeling, Question count Updation 
-|
-|
-**
-Dikshya Soni
-**
-|
- Voice Search (Voice Chat) 
-|
-|
-**
-Ansuman Dash
-**
-|
- Design collaborator 
-|
-|
-**
-Golu Kumar
-**
-|
- Strategic Stakeholder 
-|
-|
-**
-Bandarapu Ushaswini
-**
-|
- Quality Assurance 
-|
+| Name of Member | Contributions |
+|:---|:---|
+|**Pinjar Ayesha Anjuma** [Team Lead] |Team coordination, Multilingual Translation|
+|**Atul Mishra**|Type-Ahead Autocomplete|
+|**Vishal Soni**|Database Architect, Reputation and badge system |
+|**Harsh Kumar**|Smart Duplicate Detection |
+|**Sunnam Durga Malleshwari**|Heuristic Spam Detector |
+|**Devendra Sagar**|Content Flagging|
+|**Harsh Aggarwal**|Conceptual data modeling, Question count Updation |
+|**Dikshya Soni**|Voice Search (Voice Chat) |
+|**Ansuman Dash**|Design collaborator|
+|**Golu Kumar**|Strategic Stakeholder |
+|**Bandarapu Ushaswini**|Quality Assurance |
+
 ---
+
+
 
 ## 🤝 Contributing
 
