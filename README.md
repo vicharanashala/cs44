@@ -747,7 +747,6 @@ Bandarapu Ushaswini
 |
  Quality Assurance 
 |
-
 ---
 
 ## 🤝 Contributing
