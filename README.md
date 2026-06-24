@@ -657,6 +657,99 @@ To activate the admin moderation dashboard:
 
 ---
 
+## 👥 Team & Contributions
+
+|
+ Name of Member 
+|
+ Contributions 
+|
+|
+:---
+|
+:---
+|
+|
+**
+Pinjar Ayesha Anjuma
+**
+ [Team Lead] 
+|
+ Team coordination, Multilingual Translation 
+|
+|
+**
+Atul Mishra
+**
+|
+ Type-Ahead Autocomplete 
+|
+|
+**
+Vishal Soni
+**
+|
+ Database Architect, Reputation and badge system 
+|
+|
+**
+Harsh Kumar
+**
+|
+ Smart Duplicate Detection 
+|
+|
+**
+Sunnam Durga Malleshwari
+**
+|
+ Heuristic Spam Detector 
+|
+|
+**
+Devendra Sagar
+**
+|
+ Content Flagging 
+|
+|
+**
+Harsh Aggarwal
+**
+|
+ Conceptual data modeling, Question count Updation 
+|
+|
+**
+Dikshya Soni
+**
+|
+ Voice Search (Voice Chat) 
+|
+|
+**
+Ansuman Dash
+**
+|
+ Design collaborator 
+|
+|
+**
+Golu Kumar
+**
+|
+ Strategic Stakeholder 
+|
+|
+**
+Bandarapu Ushaswini
+**
+|
+ Quality Assurance 
+|
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
